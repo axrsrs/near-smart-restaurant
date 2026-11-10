@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ekranYolu, useCihaz, useOturum } from './lib/oturum'
 import EkranBekliyor from './pages/EkranBekliyor'
 import EkranSecimi from './pages/EkranSecimi'
@@ -18,9 +18,12 @@ function Acilis() {
   return <Navigate to={cihaz ? ekranYolu(cihaz) : '/ekran'} replace />
 }
 
+/* Tek dosyalık sürüm (npm run build:tek) adres çubuğu olmadan da çalışsın diye yolu bellekte tutar. */
+const Yonlendirici = import.meta.env.VITE_TEK_DOSYA ? MemoryRouter : BrowserRouter
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <Yonlendirici>
       <Routes>
         <Route path="/" element={<Acilis />} />
         <Route path="/giris" element={<Giris />} />
@@ -32,6 +35,6 @@ export default function App() {
         <Route path="/yonetim" element={<Korumali><EkranBekliyor ekran="yonetim" /></Korumali>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </Yonlendirici>
   )
 }

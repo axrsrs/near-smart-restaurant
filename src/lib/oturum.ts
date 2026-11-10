@@ -29,29 +29,38 @@ const A_PERSONEL = 'sr-personel'
 const dinleyenler = new Set<() => void>()
 const duyur = () => dinleyenler.forEach((f) => f())
 
-function oku<T>(depo: Storage, anahtar: string): T | null {
+/* Depolama kapalıysa (gizli sekme, kısıtlı tarayıcı) erişimin kendisi hata verir; durum o zaman yalnızca bellekte kalır. */
+type Depo = 'local' | 'session'
+function depo(tur: Depo): Storage | null {
   try {
-    const v = depo.getItem(anahtar)
+    return tur === 'local' ? window.localStorage : window.sessionStorage
+  } catch {
+    return null
+  }
+}
+function oku<T>(tur: Depo, anahtar: string): T | null {
+  try {
+    const v = depo(tur)?.getItem(anahtar)
     return v ? (JSON.parse(v) as T) : null
   } catch {
     return null
   }
 }
-function yaz(depo: Storage, anahtar: string, deger: unknown) {
+function yaz(tur: Depo, anahtar: string, deger: unknown) {
   try {
-    if (deger === null) depo.removeItem(anahtar)
-    else depo.setItem(anahtar, JSON.stringify(deger))
+    if (deger === null) depo(tur)?.removeItem(anahtar)
+    else depo(tur)?.setItem(anahtar, JSON.stringify(deger))
   } catch {
-    /* depolama kapalı: durum yalnızca bellekte kalır */
+    /* kota dolu ya da depolama kapalı */
   }
 }
 
-let oturum: Durum = oku<Durum>(localStorage, A_OTURUM)
+let oturum: Durum = oku<Durum>('local', A_OTURUM)
 let cihaz: Ekran | null = (() => {
-  const c = oku<string>(localStorage, A_CIHAZ)
+  const c = oku<string>('local', A_CIHAZ)
   return EKRANLAR.includes(c as Ekran) ? (c as Ekran) : null
 })()
-let personel: Personel = oku<Personel>(sessionStorage, A_PERSONEL)
+let personel: Personel = oku<Personel>('session', A_PERSONEL)
 
 const EPOSTA = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
@@ -62,7 +71,7 @@ export async function girisYap(eposta: string, sifre: string): Promise<Sonuc> {
   if (!EPOSTA.test(e) || e.length > 254) return { tamam: false, hata: 'Geçerli bir e-posta adresi yazın.' }
   if (sifre.length < 8 || sifre.length > 128) return { tamam: false, hata: 'Şifre en az 8 karakter olmalı.' }
   oturum = { eposta: e, isletme: { ad: 'Örnek İşletme', sube: 'Merkez şube', logo: null } }
-  yaz(localStorage, A_OTURUM, oturum)
+  yaz('local', A_OTURUM, oturum)
   duyur()
   return { tamam: true }
 }
@@ -70,28 +79,28 @@ export async function girisYap(eposta: string, sifre: string): Promise<Sonuc> {
 export async function pinDogrula(pin: string, ekran: Ekran): Promise<Sonuc> {
   if (!/^\d{4}$/.test(pin)) return { tamam: false, hata: 'PIN 4 haneli olmalı.' }
   personel = { ad: 'Önizleme personeli', ekran }
-  yaz(sessionStorage, A_PERSONEL, personel)
+  yaz('session', A_PERSONEL, personel)
   duyur()
   return { tamam: true }
 }
 
 export function cihazSec(e: Ekran | null) {
   cihaz = e
-  yaz(localStorage, A_CIHAZ, e)
+  yaz('local', A_CIHAZ, e)
   duyur()
 }
 
 export function personelCikis() {
   personel = null
-  yaz(sessionStorage, A_PERSONEL, null)
+  yaz('session', A_PERSONEL, null)
   duyur()
 }
 
 export function cikis() {
   oturum = null
   personel = null
-  yaz(localStorage, A_OTURUM, null)
-  yaz(sessionStorage, A_PERSONEL, null)
+  yaz('local', A_OTURUM, null)
+  yaz('session', A_PERSONEL, null)
   duyur()
 }
 
