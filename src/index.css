@@ -1,28 +1,97 @@
-/* NEAR Smart Restaurant — tema (Tailwind v4) */
+/* NEAR Smart Restaurant — tema (Tailwind v4)
+   Zemin: NEAR mono (krem / siyah) · Vurgu: mavi. Koyu tema aynı adları yeniden tanımlar. */
 @import "tailwindcss";
+@import "@fontsource-variable/geist";
 
-@theme {
-  --font-sans: Inter, "Segoe UI", system-ui, sans-serif;
-  --color-ink: #f4f5f7;      /* zemin */
-  --color-ink-2: #ffffff;    /* panel */
-  --color-ink-3: #f1f3f5;    /* hafif dolgu */
-  --color-line: #e1e4e8;
+@theme static {
+  --font-sans: "Geist Variable", Inter, "Segoe UI", system-ui, sans-serif;
+  --color-ink: #ebe9e5;      /* zemin */
+  --color-ink-2: #f7f6f3;    /* panel */
+  --color-ink-3: #e2dfda;    /* hafif dolgu */
+  --color-line: #d3d0ca;
   --color-gold: #1d5fa8;     /* vurgu (eski adı korundu) */
   --color-gold-dark: #174e8a;
-  --color-soft: #e8f0fa;
-  --color-text: #1b1f24;
-  --color-muted: #59616c;
+  --color-on-gold: #ffffff;  /* vurgu üstündeki yazı */
+  --color-soft: #dde6f1;
+  --color-text: #151514;
+  --color-muted: #5d5b57;
   --color-ok: #1f8a5b;
   --color-warn: #b45309;
   --color-danger: #c2410c;
+  --color-glass: rgb(250 249 246 / 0.9);
+}
+
+:root[data-theme="dark"] {
+  --color-ink: #0a0a09;
+  --color-ink-2: #161615;
+  --color-ink-3: #222220;
+  --color-line: #2e2d2b;
+  --color-gold: #6aa5e8;
+  --color-gold-dark: #8ab9ee;
+  --color-on-gold: #08121f;
+  --color-soft: #14233a;
+  --color-text: #f1efea;
+  --color-muted: #a3a09a;
+  --color-ok: #4cc38a;
+  --color-warn: #e39a4a;
+  --color-danger: #f0764a;
+  --color-glass: rgb(12 12 11 / 0.86);
+  color-scheme: dark;
 }
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; color-scheme: light; }
   body {
     @apply bg-ink text-text font-sans antialiased;
     overflow-x: hidden;
+    transition: background-color 0.3s, color 0.3s;
   }
-  ::selection { @apply bg-soft text-gold-dark; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; }
+  ::selection { background: var(--color-text); color: var(--color-ink); }
   :focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+}
+
+/* tema geçişi: düğmeden açılan kare (animasyonu tema.ts verir) */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+
+/* ── giriş kabuğu: akış çizgileri + cam kart + gezen ışık ── */
+.giris-zemin {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 2 2' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='1' height='1' fill='%23888'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%23888'/%3E%3C/svg%3E");
+  background-size: 2px 2px;
+  opacity: 0.07;
+}
+.giris-sar { perspective: 1500px; animation: girisGir 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes girisGir { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+.giris-kart { position: relative; transform-style: preserve-3d; transition: transform 0.25s ease-out; }
+.isinlar { position: absolute; inset: -1px; border-radius: 17px; overflow: hidden; pointer-events: none; }
+.isinlar i { position: absolute; opacity: 0.7; filter: blur(1.5px); }
+.isinlar i:nth-child(1) { top: 0; left: -50%; height: 3px; width: 50%; background: linear-gradient(90deg, transparent, var(--color-text), transparent); animation: isinUst 3.5s ease-in-out infinite; }
+.isinlar i:nth-child(2) { right: 0; top: -50%; width: 3px; height: 50%; background: linear-gradient(180deg, transparent, var(--color-text), transparent); animation: isinSag 3.5s ease-in-out 0.6s infinite; }
+.isinlar i:nth-child(3) { bottom: 0; right: -50%; height: 3px; width: 50%; background: linear-gradient(90deg, transparent, var(--color-text), transparent); animation: isinAlt 3.5s ease-in-out 1.2s infinite; }
+.isinlar i:nth-child(4) { left: 0; bottom: -50%; width: 3px; height: 50%; background: linear-gradient(180deg, transparent, var(--color-text), transparent); animation: isinSol 3.5s ease-in-out 1.8s infinite; }
+@keyframes isinUst { 0% { left: -50%; } 71%, 100% { left: 100%; } }
+@keyframes isinSag { 0% { top: -50%; } 71%, 100% { top: 100%; } }
+@keyframes isinAlt { 0% { right: -50%; } 71%, 100% { right: 100%; } }
+@keyframes isinSol { 0% { bottom: -50%; } 71%, 100% { bottom: 100%; } }
+.cam {
+  position: relative;
+  border-radius: 16px;
+  background: var(--color-glass);
+  border: 1px solid color-mix(in srgb, var(--color-text) 9%, transparent);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 25px 60px -16px rgb(0 0 0 / 0.3);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+:root[data-theme="dark"] .cam { box-shadow: 0 25px 60px -12px rgb(0 0 0 / 0.6); }
+.near-logo { transition: filter 0.3s; }
+:root:not([data-theme="dark"]) .near-logo { filter: invert(1); }
+.salla { animation: salla 0.4s ease-in-out; }
+@keyframes salla { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .giris-sar, .salla { animation: none; }
+  .isinlar { display: none; }
+  .giris-kart { transition: none; }
 }

@@ -1,13 +1,37 @@
+import type { ReactNode } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { ekranYolu, useCihaz, useOturum } from './lib/oturum'
+import EkranBekliyor from './pages/EkranBekliyor'
+import EkranSecimi from './pages/EkranSecimi'
+import Giris from './pages/Giris'
+import PinGiris from './pages/PinGiris'
+
+function Korumali({ children }: { children: ReactNode }) {
+  return useOturum() ? children : <Navigate to="/giris" replace />
+}
+
+/** Açılış: giriş yoksa girişe, cihaz seçilmişse doğrudan o ekrana, değilse ekran seçimine. */
+function Acilis() {
+  const oturum = useOturum()
+  const cihaz = useCihaz()
+  if (!oturum) return <Navigate to="/giris" replace />
+  return <Navigate to={cihaz ? ekranYolu(cihaz) : '/ekran'} replace />
+}
+
 export default function App() {
   return (
-    <div className="min-h-dvh bg-ink">
-      <header className="sticky top-0 z-10 border-b border-line bg-ink-2/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-          <span className="grid size-8 place-items-center rounded-lg bg-gold text-sm font-bold text-white">N</span>
-          <span className="font-semibold text-text">NEAR Smart Restaurant</span>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-6" />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Acilis />} />
+        <Route path="/giris" element={<Giris />} />
+        <Route path="/ekran" element={<Korumali><EkranSecimi /></Korumali>} />
+        <Route path="/pin/:ekran" element={<PinGiris />} />
+        <Route path="/kasa" element={<Korumali><EkranBekliyor ekran="kasa" /></Korumali>} />
+        <Route path="/mutfak" element={<Korumali><EkranBekliyor ekran="mutfak" /></Korumali>} />
+        <Route path="/tv" element={<Korumali><EkranBekliyor ekran="tv" /></Korumali>} />
+        <Route path="/yonetim" element={<Korumali><EkranBekliyor ekran="yonetim" /></Korumali>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
