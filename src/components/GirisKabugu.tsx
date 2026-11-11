@@ -1,6 +1,5 @@
 import { useRef, type PointerEvent, type ReactNode } from 'react'
 import AkisArkaPlan from './AkisArkaPlan'
-import OnizlemeEtiketi from './OnizlemeEtiketi'
 import TemaDugmesi from './TemaDugmesi'
 
 /** Giriş ve PIN ekranlarının ortak kabuğu: akış çizgileri, cam kart, gezen ışık, fareyle 3B eğilme. */
@@ -23,7 +22,6 @@ export default function GirisKabugu({ children, genislik = 'max-w-96' }: { child
       <AkisArkaPlan />
       <div aria-hidden="true" className="giris-zemin pointer-events-none fixed inset-0 z-0" />
       <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 left-4 z-10 flex items-center justify-between gap-3">
-        <OnizlemeEtiketi />
         <TemaDugmesi className="ml-auto" />
       </div>
       <div className={`giris-sar relative z-[2] w-full ${genislik}`}>

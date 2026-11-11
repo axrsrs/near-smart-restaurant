@@ -1,48 +1,43 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
 import Anahtar from '../components/Anahtar'
 import { ALAN, BTN_ANA, BTN_IKINCIL, IKON_BTN } from '../components/bicim'
 import Fis from '../components/Fis'
 import Ikon from '../components/Ikon'
-import OnizlemeEtiketi from '../components/OnizlemeEtiketi'
 import Pencere from '../components/Pencere'
 import QrKod from '../components/QrKod'
 import TemaDugmesi from '../components/TemaDugmesi'
 import { oku, yaz } from '../lib/depo'
 import { ODEME_ADI, takipAdresi, TUR_ADI } from '../lib/etiketler'
-import { useIsletme } from '../lib/isletme'
 import { menuYukle, useMenu, type MenuUrun } from '../lib/menu'
-import { cihazKilitle, personelCikis, useGecerliPersonel } from '../lib/oturum'
+import { kilitle, type Isletme } from '../lib/oturum'
 import { tl } from '../lib/para'
 import {
-  bugun,
   otomatikFisAyarla,
   siparisDurumu,
+  siparisleriYukle,
   siparisOlustur,
   tukendiAyarla,
   useOtomatikFis,
   useSiparisler,
-  useTukendi,
   type Odeme,
   type Siparis,
   type SiparisTuru,
 } from '../lib/veri'
 
 type Satir = { anahtar: string; urunId: string; ad: string; fiyat: number; adet: number; not: string }
-type Acik = null | { t: 'sepet' } | { t: 'not'; anahtar: string } | { t: 'odeme' } | { t: 'tamam'; siparis: Siparis } | { t: 'siparisler' }
+type Acik = null | { t: 'sepet' } | { t: 'not'; anahtar: string } | { t: 'odeme'; istek: string } | { t: 'tamam'; siparis: Siparis } | { t: 'siparisler' }
 
 const HAZIR_NOTLAR = ['Soğansız', 'Acısız', 'Az pişmiş', 'İyi pişmiş', 'Sossuz', 'Buzsuz', 'Şekersiz', 'Yanında peçete']
-const A_SEPET = 'sr-sepet'
+const A_SEPET = 'tetra-sepet'
+const LISTE_ARALIGI = 60_000
+const istekKimligi = () => (crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => (Number(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(c) / 4)))).toString(16)))
 const kucuk = (s: string) => s.toLocaleLowerCase('tr')
 const anahtar = (urunId: string, not: string) => `${urunId}|${kucuk(not)}`
 const saat = (z: number) => new Date(z).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
 
-export default function Kasa() {
-  const personel = useGecerliPersonel('kasa')
-  const git = useNavigate()
-  const { slug, ad: isletmeAd, logo } = useIsletme()
+export default function Kasa({ isletme, personel }: { isletme: Isletme; personel: { id: string; ad: string } }) {
+  const { slug, ad: isletmeAd, logo } = isletme
   const { menu, yukleniyor, hata: menuHata } = useMenu(slug)
-  const yerelTukendi = useTukendi()
   const siparisler = useSiparisler()
   const otomatikFis = useOtomatikFis()
 
@@ -54,10 +49,22 @@ export default function Kasa() {
   const [acik, setAcik] = useState<Acik>(null)
   const [basilacak, setBasilacak] = useState<{ siparis: Siparis; sira: number } | null>(null)
   const [uyari, setUyari] = useState('')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
   const tamamlaniyor = useRef(false)
 
-  /* kasa açıkken cihaz kasa cihazıdır: Ekran seçimi ve Yönetim yeniden şifre ister */
-  useEffect(cihazKilitle, [])
+  /* bugünün siparişleri: açılışta, ekrana dönüldüğünde ve dakikada bir sunucudan okunur */
+  useEffect(() => {
+    const oku_ = () => {
+      if (!document.hidden) void siparisleriYukle()
+    }
+    oku_()
+    const sayac = setInterval(oku_, LISTE_ARALIGI)
+    document.addEventListener('visibilitychange', oku_)
+    return () => {
+      clearInterval(sayac)
+      document.removeEventListener('visibilitychange', oku_)
+    }
+  }, [])
 
   useEffect(() => {
     yaz('session', A_SEPET, sepet.length ? sepet : null)
@@ -71,7 +78,6 @@ export default function Kasa() {
   }, [basilacak])
   const yazdir = (siparis: Siparis) => setBasilacak((o) => ({ siparis, sira: (o?.sira ?? 0) + 1 }))
 
-  const tukendiKume = useMemo(() => new Set(yerelTukendi), [yerelTukendi])
   /* Sepet her zaman güncel menüye göre okunur: fiyat ve ad menüden gelir (sepette saklanan fiyata güvenilmez),
      tükenen ya da menüden kalkan ürün satırı düşer. */
   const { satirlar, dusenler } = useMemo(() => {
@@ -82,11 +88,11 @@ export default function Kasa() {
     const d: string[] = []
     for (const x of sepet) {
       const u = harita.get(x.urunId)
-      if (!u || u.tukendi || tukendiKume.has(u.id)) d.push(x.ad)
+      if (!u || u.tukendi) d.push(x.ad)
       else s.push({ ...x, ad: u.ad, fiyat: u.fiyat })
     }
     return { satirlar: s, dusenler: d }
-  }, [sepet, menu, tukendiKume])
+  }, [sepet, menu])
   const adetler = useMemo(() => {
     const m = new Map<string, number>()
     for (const s of satirlar) m.set(s.urunId, (m.get(s.urunId) ?? 0) + s.adet)
@@ -99,10 +105,7 @@ export default function Kasa() {
       .map((k) => ({ ...k, urunler: a ? k.urunler.filter((u) => kucuk(u.ad).includes(a)) : k.urunler }))
       .filter((k) => k.urunler.length)
   }, [menu, kategori, arama])
-  const gun = bugun() // gece yarısından sonra liste yeni güne geçer
-  const bugunku = useMemo(() => siparisler.filter((s) => s.gun === gun).sort((x, y) => y.no - x.no), [siparisler, gun])
-
-  if (!personel) return <Navigate to="/pin/kasa" replace />
+  const bugunku = useMemo(() => [...siparisler].sort((x, y) => y.no - x.no), [siparisler]) // sunucu yalnızca bugünün siparişlerini döner
 
   const toplam = satirlar.reduce((t, s) => t + s.fiyat * s.adet, 0)
   const urunAdedi = satirlar.reduce((t, s) => t + s.adet, 0)
@@ -130,21 +133,26 @@ export default function Kasa() {
       if (hedef) return l.filter((s) => s.anahtar !== a).map((s) => (s.anahtar === yeni ? { ...s, adet: Math.min(99, s.adet + satir.adet) } : s))
       return l.map((s) => (s.anahtar === a ? { ...s, anahtar: yeni, not } : s))
     })
-  const urunDokun = (u: MenuUrun) => {
+  const urunDokun = async (u: MenuUrun) => {
     if (!stokModu) return ekle(u)
-    if (u.tukendi) return setUyari(`"${u.ad}" NearMenu'de tükendi olarak işaretli; oradan açılabilir.`)
-    const s = tukendiAyarla(u.id, !tukendiKume.has(u.id))
+    /* tükendi işareti ürünün NearMenu'deki kaydını değiştirir: QR menüde de aynı anda görünür */
+    const s = await tukendiAyarla(slug, u.id, !u.tukendi)
     setUyari(s.tamam ? '' : s.hata)
   }
-  const tamamla = (odeme: Odeme) => {
-    /* art arda iki dokunuş tek sipariş oluşturur */
+  const tamamla = async (odeme: Odeme, istek: string) => {
+    /* art arda iki dokunuş tek istek gönderir; bağlantı koparsa aynı istek kimliğiyle yeniden denenir, sunucu tek sipariş oluşturur */
     if (tamamlaniyor.current || !satirlar.length) return
     tamamlaniyor.current = true
-    const s = siparisOlustur({ kalemler: satirlar.map(({ urunId, ad, fiyat, adet, not }) => ({ urunId, ad, fiyat, adet, not })), tur, odeme, personelAd: personel.ad })
+    setKaydediliyor(true)
+    const s = await siparisOlustur({ kalemler: satirlar.map(({ urunId, adet, not }) => ({ urunId, adet, not })), tur, odeme, istek })
+    tamamlaniyor.current = false
+    setKaydediliyor(false)
     if (!s.tamam || !s.siparis) {
       setUyari(s.tamam ? 'Sipariş kaydedilemedi.' : s.hata)
-      return setAcik(null)
+      void menuYukle(slug, true) // tükenen ya da fiyatı değişen ürün varsa sepet güncel menüye göre düzelsin
+      return
     }
+    setUyari('')
     setSepet([])
     setTur('burada')
     setAcik({ t: 'tamam', siparis: s.siparis })
@@ -162,7 +170,7 @@ export default function Kasa() {
       adetDegistir={adetDegistir}
       notAc={(a) => setAcik({ t: 'not', anahtar: a })}
       bosalt={() => setSepet([])}
-      tamamla={() => { tamamlaniyor.current = false; setAcik({ t: 'odeme' }) }}
+      tamamla={() => { setUyari(''); setAcik({ t: 'odeme', istek: istekKimligi() }) }}
     />
   )
   const notSatiri = acik?.t === 'not' ? satirlar.find((s) => s.anahtar === acik.anahtar) : undefined
@@ -180,7 +188,6 @@ export default function Kasa() {
             <p className="truncate text-sm leading-tight font-semibold">{isletmeAd}</p>
             <p className="truncate text-xs text-muted">Kasa · {personel.ad}</p>
           </div>
-          <OnizlemeEtiketi className="hidden md:inline-flex" />
           <button
             type="button"
             aria-pressed={stokModu}
@@ -198,7 +205,7 @@ export default function Kasa() {
           <TemaDugmesi />
           <button
             type="button"
-            onClick={() => { personelCikis(); git('/pin/kasa', { replace: true }) }}
+            onClick={() => void kilitle()}
             title="Kasayı kilitle"
             aria-label="Kasayı kilitle"
             className="grid size-11 flex-none place-items-center rounded-full border border-line bg-ink-2 text-text"
@@ -232,7 +239,7 @@ export default function Kasa() {
             </div>
             {stokModu && (
               <p className="mt-2 rounded-xl border border-warn/50 bg-ink-2 px-3 py-2 text-[13px] text-warn">
-                <b className="font-semibold">Tükendi işaretleme açık.</b> Ürüne dokununca tükendi olur, yeniden dokununca açılır. Önizlemede bu işaret yalnızca bu cihazda geçerlidir.
+                <b className="font-semibold">Tükendi işaretleme açık.</b> Ürüne dokununca tükendi olur, yeniden dokununca açılır. İşaret QR menüde de aynı anda görünür.
               </p>
             )}
             {(uyari || menuHata) && <p role="alert" className="mt-2 text-[13px] text-danger">{uyari || menuHata}</p>}
@@ -257,14 +264,14 @@ export default function Kasa() {
                 <h2 className="mb-2 text-[13px] font-semibold tracking-wider text-muted uppercase">{g.ad}</h2>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
                   {g.urunler.map((u) => {
-                    const tukendi = u.tukendi || tukendiKume.has(u.id)
+                    const tukendi = u.tukendi
                     const adet = adetler.get(u.id) ?? 0
                     return (
                       <button
                         key={u.id}
                         type="button"
                         disabled={tukendi && !stokModu}
-                        onClick={() => urunDokun(u)}
+                        onClick={() => void urunDokun(u)}
                         aria-label={`${u.ad}, ${tl(u.fiyat)}${tukendi ? ', tükendi' : ''}`}
                         className={`relative aspect-[4/3] overflow-hidden rounded-2xl border bg-[#262523] text-left transition active:scale-[0.97] ${adet ? 'border-gold ring-2 ring-gold/40' : 'border-line'}`}
                       >
@@ -277,7 +284,7 @@ export default function Kasa() {
                         {adet > 0 && <span className="absolute top-2 right-2 grid h-7 min-w-7 place-items-center rounded-full bg-gold px-1.5 text-sm font-bold text-on-gold tabular-nums">{adet}</span>}
                         {tukendi && (
                           <span className="absolute inset-0 grid place-items-center bg-black/65 text-center text-sm font-semibold text-white">
-                            {u.tukendi ? "NearMenu'de tükendi" : 'Tükendi'}
+                            Tükendi
                           </span>
                         )}
                       </button>
@@ -312,14 +319,15 @@ export default function Kasa() {
       )}
       {notSatiri && <NotPenceresi satir={notSatiri} kaydet={(n) => { notKaydet(notSatiri.anahtar, n); setAcik(window.matchMedia('(min-width: 1024px)').matches ? null : { t: 'sepet' }) }} kapat={() => setAcik(window.matchMedia('(min-width: 1024px)').matches ? null : { t: 'sepet' })} />}
       {acik?.t === 'odeme' && (
-        <Pencere baslik="Ödeme" kapat={() => setAcik(null)}>
+        <Pencere baslik="Ödeme" kapat={() => !kaydediliyor && setAcik(null)}>
           <p className="text-center text-sm text-muted">{urunAdedi} ürün · {TUR_ADI[tur]}</p>
           <p className="mt-1 mb-5 text-center text-4xl font-semibold tracking-tight tabular-nums">{tl(toplam)}</p>
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" data-ilk onClick={() => tamamla('nakit')} className={`${BTN_ANA} h-20 text-lg`}>Nakit</button>
-            <button type="button" onClick={() => tamamla('kart')} className={`${BTN_ANA} h-20 text-lg`}>Kart</button>
+            <button type="button" data-ilk disabled={kaydediliyor || !satirlar.length} onClick={() => void tamamla('nakit', acik.istek)} className={`${BTN_ANA} h-20 text-lg`}>Nakit</button>
+            <button type="button" disabled={kaydediliyor || !satirlar.length} onClick={() => void tamamla('kart', acik.istek)} className={`${BTN_ANA} h-20 text-lg`}>Kart</button>
           </div>
-          <p className="mt-3 text-center text-xs text-muted">Ödeme türü yalnızca kayıt içindir; ödeme cihazına bağlanmaz.</p>
+          <p role="alert" aria-live="polite" className="mt-3 min-h-5 text-center text-[13px] text-danger">{kaydediliyor ? '' : uyari}</p>
+          <p className="text-center text-xs text-muted">{kaydediliyor ? 'Sipariş kaydediliyor…' : 'Ödeme türü yalnızca kayıt içindir; ödeme cihazına bağlanmaz.'}</p>
         </Pencere>
       )}
       {acik?.t === 'tamam' && (
@@ -330,7 +338,7 @@ export default function Kasa() {
           <div className="mx-auto mt-4 w-44 rounded-2xl bg-white p-2">
             <QrKod metin={takipAdresi(acik.siparis.kod)} className="block size-full" />
           </div>
-          <p className="mx-auto mt-3 max-w-xs text-center text-[13px] text-muted">Müşteri bu QR'ı okutunca siparişini telefonundan izler. Hazır bildirimi sunucu bağlandığında gönderilecek.</p>
+          <p className="mx-auto mt-3 max-w-xs text-center text-[13px] text-muted">Müşteri bu QR'ı okutunca siparişinin durumunu kendi telefonundan izler.</p>
           <div className="mt-4 flex items-center gap-3 rounded-[10px] border border-line px-3.5 py-1">
             <span className="min-w-0 flex-1 text-sm font-semibold">Fişi otomatik yazdır</span>
             <Anahtar acik={otomatikFis} degistir={otomatikFisAyarla} etiket="Fişi otomatik yazdır" />
@@ -461,6 +469,7 @@ function NotPenceresi({ satir, kaydet, kapat }: { satir: Satir; kaydet: (not: st
 
 function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdir: (s: Siparis) => void; kapat: () => void }) {
   const [iptalSor, setIptalSor] = useState<string | null>(null)
+  const [hata, setHata] = useState('')
   const gecerli = liste.filter((s) => s.durum !== 'iptal')
   const tutar = (o: Odeme) => gecerli.filter((s) => s.odeme === o).reduce((t, s) => t + s.toplam, 0)
 
@@ -474,7 +483,8 @@ function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdi
           </div>
         ))}
       </div>
-      {!liste.length && <p className="mt-6 mb-2 text-center text-sm text-muted">Bugün henüz sipariş alınmadı.</p>}
+      <p role="alert" aria-live="polite" className="mt-2 min-h-5 text-[13px] text-danger">{hata}</p>
+      {!liste.length && <p className="mt-4 mb-2 text-center text-sm text-muted">Bugün henüz sipariş alınmadı.</p>}
       <ul className="mt-3 flex flex-col gap-2">
         {liste.map((s) => (
           <li key={s.id} className={`rounded-xl border border-line bg-ink p-3 ${s.durum === 'iptal' ? 'opacity-60' : ''}`}>
@@ -484,13 +494,15 @@ function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdi
                 <p className="text-[15px] font-semibold tabular-nums">
                   {tl(s.toplam)}
                   {s.durum === 'iptal' && <span className="ml-2 rounded-full border border-danger/50 px-2 py-0.5 text-xs text-danger">İptal</span>}
+                  {s.durum === 'hazir' && <span className="ml-2 rounded-full bg-ok/15 px-2 py-0.5 text-xs text-ok">Hazır</span>}
+                  {s.durum === 'teslim' && <span className="ml-2 rounded-full border border-line px-2 py-0.5 text-xs text-muted">Teslim edildi</span>}
                 </p>
                 <p className="truncate text-xs text-muted">{saat(s.zaman)} · {TUR_ADI[s.tur]} · {ODEME_ADI[s.odeme]} · {s.kalemler.reduce((t, k) => t + k.adet, 0)} ürün</p>
               </div>
               <button type="button" onClick={() => yazdir(s)} aria-label={`${s.no} numaralı siparişin fişini yazdır`} title="Fiş yazdır" className={IKON_BTN}>
                 <Ikon ad="yazici" className="size-[18px]" />
               </button>
-              {s.durum !== 'iptal' && (
+              {(s.durum === 'hazirlaniyor' || s.durum === 'hazir') && (
                 <button type="button" onClick={() => setIptalSor(iptalSor === s.id ? null : s.id)} aria-label={`${s.no} numaralı siparişi iptal et`} title="İptal et" className={`${IKON_BTN} text-danger`}>
                   <Ikon ad="kapat" className="size-[18px]" />
                 </button>
@@ -501,7 +513,7 @@ function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdi
               <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
                 <span className="min-w-0 flex-1 text-[13px]">{s.no} numaralı sipariş iptal edilsin mi?</span>
                 <button type="button" onClick={() => setIptalSor(null)} className={`${BTN_IKINCIL} h-11`}>Vazgeç</button>
-                <button type="button" onClick={() => { siparisDurumu(s.id, 'iptal'); setIptalSor(null) }} className="inline-flex h-11 items-center rounded-[10px] bg-danger px-4 text-[15px] font-semibold text-on-danger">İptal et</button>
+                <button type="button" onClick={async () => { setIptalSor(null); const y = await siparisDurumu(s.id, 'iptal'); setHata(y.tamam ? '' : y.hata) }} className="inline-flex h-11 items-center rounded-[10px] bg-danger px-4 text-[15px] font-semibold text-on-danger">İptal et</button>
               </div>
             )}
           </li>

@@ -1,161 +1,253 @@
-/* Oturum katmanı.
-   ŞU AN: önizleme. Sunucu (Supabase) bağlanana kadar yönetici girişi yalnızca biçim olarak denetlenir ve
-   ekranlarda "Önizleme" etiketi görünür. Personel PIN'i ise Yönetim'de tanımlanan personele göre gerçekten denetlenir.
-   Cihaz kasa/mutfak/TV ekranına geçtiğinde yönetici bölümleri kilitlenir; geri dönmek için giriş şifresi sorulur.
-   Bu denetimlerin hepsi tarayıcıda yapılır: tarayıcı kayıtlarına erişebilen biri aşabilir. Gerçek koruma sunucuyla gelir.
-   Sunucu bağlanınca bu dosyadaki girisYap / pinDogrula / cikis sunucuya taşınır; ekranlar değişmez. */
+/* Oturum katmanı. İki ayrı kimlik vardır:
+   · Yönetici: işletme sahibi e-posta ve şifreyle girer (Supabase Auth). Personeli ve cihazları yönetir.
+   · Cihaz: kasa / mutfak / TV olarak tanıtılan tablet. Kendi anahtarıyla çalışır; yönetici oturumunu taşımaz.
+     Kasa ve mutfakta personel 4 haneli PIN ile oturum açar; PIN ve deneme sınırı sunucuda denetlenir. */
 import { useSyncExternalStore } from 'react'
 import { oku, yaz } from './depo'
-import { ozetle, personelBul, usePersonelListesi, type Sonuc, type Yetki } from './veri'
+import { cagir, hataMetni, sunucu, SunucuHatasi } from './sunucu'
 
-export const ONIZLEME = true
-
+export type Sonuc = { tamam: true } | { tamam: false; hata: string }
 export type Ekran = 'kasa' | 'mutfak' | 'tv' | 'yonetim'
+export type CihazEkrani = Exclude<Ekran, 'yonetim'>
 export const EKRANLAR: Ekran[] = ['kasa', 'mutfak', 'tv', 'yonetim']
+export const EKRAN_ADI: Record<Ekran, string> = { kasa: 'Kasa', mutfak: 'Mutfak', tv: 'TV ekranı', yonetim: 'Yönetim' }
 export const PIN_ISTEYEN: Ekran[] = ['kasa', 'mutfak']
-export const EKRAN_ADI: Record<Ekran, string> = {
-  kasa: 'Kasa',
-  mutfak: 'Mutfak',
-  tv: 'TV ekranı',
-  yonetim: 'Yönetim',
+
+export type Isletme = { id: string; slug: string; ad: string; logo: string }
+export type IsletmeKaydi = Isletme & { rol: string; tetra: boolean; abonelik: boolean }
+export type Yonetici =
+  | { durum: 'yukleniyor' }
+  | { durum: 'yok' }
+  | { durum: 'var'; eposta: string; isletmeler: IsletmeKaydi[]; secili: IsletmeKaydi | null; hata: string }
+export type Cihaz =
+  | { durum: 'yok' }
+  | { durum: 'yukleniyor'; ekran: CihazEkrani; ad: string; isletme: Isletme }
+  | { durum: 'hazir'; id: string; ekran: CihazEkrani; ad: string; isletme: Isletme; kanal: string; personel: { id: string; ad: string } | null; personelTanimli: boolean }
+  | { durum: 'hata'; ekran: CihazEkrani; ad: string; isletme: Isletme; hata: string; kapali: boolean }
+
+type CihazKaydi = { anahtar: string; ekran: CihazEkrani; ad: string; isletme: Isletme }
+type CihazYaniti = {
+  cihaz: { id: string; ekran: CihazEkrani; ad: string }
+  isletme: Isletme
+  kanal: string
+  personel: { id: string; ad: string } | null
+  personel_tanimli: boolean
 }
 
-/** Kasa ve mutfak önce personel PIN'i ister; TV ve yönetim doğrudan açılır. */
-export const ekranYolu = (e: Ekran) => (PIN_ISTEYEN.includes(e) ? `/pin/${e}` : `/${e}`)
-
-type Durum = { eposta: string; sifreOzet: string } | null
-type Personel = { id: string; ad: string; ekran: Ekran } | null
-type Kilit = { hata: number; bitis: number }
-
-const A_OTURUM = 'sr-oturum'
-const A_CIHAZ = 'sr-cihaz'
-const A_PERSONEL = 'sr-personel'
-const A_YONETICI = 'sr-yonetici-acik'
-const A_KILIT = 'sr-pin-kilit'
-const A_YKILIT = 'sr-yonetici-kilit'
-const HATA_SINIRI = 5
-const KILIT_SURESI = 30_000
+const A_CIHAZ = 'tetra-cihaz'
+const A_OTURUM = 'tetra-personel-oturum'
+const A_ISLETME = 'tetra-isletme'
 const dinleyenler = new Set<() => void>()
 const duyur = () => dinleyenler.forEach((f) => f())
 
-function oturumOku(): Durum {
-  const o = oku<Partial<NonNullable<Durum>>>('local', A_OTURUM)
-  return o && typeof o.eposta === 'string' && typeof o.sifreOzet === 'string' && o.sifreOzet.length >= 16 ? { eposta: o.eposta, sifreOzet: o.sifreOzet } : null
+let yonetici: Yonetici = { durum: 'yukleniyor' }
+let kayit: CihazKaydi | null = (() => {
+  const k = oku<Partial<CihazKaydi>>('local', A_CIHAZ)
+  return k && typeof k.anahtar === 'string' && /^[0-9a-f]{64}$/.test(k.anahtar) && k.isletme && (k.ekran === 'kasa' || k.ekran === 'mutfak' || k.ekran === 'tv')
+    ? (k as CihazKaydi)
+    : null
+})()
+let cihaz: Cihaz = kayit ? { durum: 'yukleniyor', ekran: kayit.ekran, ad: kayit.ad, isletme: kayit.isletme } : { durum: 'yok' }
+let personelOturum: string | null = oku<string>('session', A_OTURUM)
+let cihazNotu = '' // cihaz kaldırıldığında giriş ekranında gösterilecek açıklama
+
+const ayarlaYonetici = (y: Yonetici) => {
+  yonetici = y
+  duyur()
 }
-function cihazOku(): Ekran | null {
-  const c = oku<string>('local', A_CIHAZ)
-  return EKRANLAR.includes(c as Ekran) ? (c as Ekran) : null
+const ayarlaCihaz = (c: Cihaz) => {
+  cihaz = c
+  duyur()
 }
 
-let oturum: Durum = oturumOku()
-let cihaz: Ekran | null = cihazOku()
-let personel: Personel = oku<Personel>('session', A_PERSONEL)
-/* yönetici bölümleri yalnızca bu sekmede, giriş ya da şifre doğrulamasından sonra açıktır */
-let yoneticiAcik = oturum !== null && oku<boolean>('session', A_YONETICI) === true
-
-/* başka sekmede çıkış yapılırsa ya da cihazın ekranı değişirse bu sekme de güncellenir */
-if (typeof window !== 'undefined')
-  window.addEventListener('storage', (e) => {
-    if (e.key !== A_OTURUM && e.key !== A_CIHAZ) return
-    oturum = oturumOku()
-    cihaz = cihazOku()
-    if (!oturum) {
-      personel = null
-      yoneticiAcik = false
-    }
-    duyur()
-  })
-
+/* ───────── yönetici ───────── */
 const EPOSTA = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-/** Art arda 5 hatalı denemeden sonra 30 saniye bekletir. */
-function denemeKilidi(anahtar: string) {
-  const kilit = oku<Kilit>('local', anahtar) ?? { hata: 0, bitis: 0 }
-  const simdi = Date.now()
-  return {
-    engel: kilit.bitis > simdi ? `Çok fazla hatalı deneme. ${Math.ceil((kilit.bitis - simdi) / 1000)} saniye sonra tekrar deneyin.` : '',
-    hatali(mesaj: string): string {
-      const sayi = kilit.hata + 1
-      if (sayi >= HATA_SINIRI) {
-        yaz('local', anahtar, { hata: 0, bitis: simdi + KILIT_SURESI })
-        return 'Çok fazla hatalı deneme. 30 saniye sonra tekrar deneyin.'
-      }
-      yaz('local', anahtar, { hata: sayi, bitis: 0 })
-      return `${mesaj} Kalan deneme: ${HATA_SINIRI - sayi}`
-    },
-    temizle: () => yaz('local', anahtar, null),
+async function yoneticiYukle(eposta: string) {
+  try {
+    const liste = await cagir<IsletmeKaydi[]>('tetra_baslangic')
+    const tetraAcik = liste.filter((i) => i.tetra)
+    const kayitli = oku<string>('local', A_ISLETME)
+    const secili = tetraAcik.find((i) => i.id === kayitli) ?? (tetraAcik.length === 1 ? tetraAcik[0] : null)
+    ayarlaYonetici({ durum: 'var', eposta, isletmeler: liste, secili, hata: '' })
+  } catch (e) {
+    ayarlaYonetici({ durum: 'var', eposta, isletmeler: [], secili: null, hata: hataMetni(e) })
   }
 }
 
-function yoneticiAyarla(acik: boolean) {
-  yoneticiAcik = acik
-  yaz('session', A_YONETICI, acik ? true : null)
-}
+sunucu.auth
+  .getSession()
+  .then(({ data }) => {
+    const eposta = data.session?.user.email
+    if (eposta) return yoneticiYukle(eposta)
+    ayarlaYonetici({ durum: 'yok' })
+  })
+  .catch(() => ayarlaYonetici({ durum: 'yok' }))
 
 export async function girisYap(eposta: string, sifre: string): Promise<Sonuc> {
   const e = eposta.trim().toLowerCase()
   if (!EPOSTA.test(e) || e.length > 254) return { tamam: false, hata: 'Geçerli bir e-posta adresi yazın.' }
   if (sifre.length < 8 || sifre.length > 128) return { tamam: false, hata: 'Şifre en az 8 karakter olmalı.' }
-  oturum = { eposta: e, sifreOzet: await ozetle(`yonetici:${sifre}`) }
-  yaz('local', A_OTURUM, oturum)
-  yoneticiAyarla(true)
-  duyur()
+  let yanit
+  try {
+    yanit = await sunucu.auth.signInWithPassword({ email: e, password: sifre })
+  } catch {
+    return { tamam: false, hata: 'Sunucuya ulaşılamadı. İnternet bağlantısını denetleyin.' }
+  }
+  if (yanit.error || !yanit.data.session) {
+    const durum = yanit.error?.status ?? 0
+    if (durum === 429) return { tamam: false, hata: 'Çok fazla deneme yapıldı. Biraz bekleyip yeniden deneyin.' }
+    if (durum === 0 || durum >= 500) return { tamam: false, hata: 'Sunucuya ulaşılamadı. İnternet bağlantısını denetleyin.' }
+    return { tamam: false, hata: 'E-posta ya da şifre hatalı.' }
+  }
+  if (yanit.data.user?.user_metadata?.must_change_password === true) {
+    await sunucu.auth.signOut({ scope: 'local' })
+    return { tamam: false, hata: 'İlk girişte geçici şifreni değiştirmen gerekiyor. Önce NearMenu panelinden şifreni belirle.' }
+  }
+  await yoneticiYukle(e)
   return { tamam: true }
 }
 
-/** Kilitli cihazda yönetici bölümlerini açar: girişte kullanılan şifre sorulur. */
-export async function yoneticiDogrula(sifre: string): Promise<Sonuc> {
-  if (!oturum) return { tamam: false, hata: 'Oturum kapalı. Yeniden giriş yapın.' }
-  const kilit = denemeKilidi(A_YKILIT)
-  if (kilit.engel) return { tamam: false, hata: kilit.engel }
-  if (sifre.length < 8 || sifre.length > 128 || (await ozetle(`yonetici:${sifre}`)) !== oturum.sifreOzet)
-    return { tamam: false, hata: kilit.hatali('Şifre hatalı.') }
-  kilit.temizle()
-  yoneticiAyarla(true)
-  duyur()
-  return { tamam: true }
+export async function cikis() {
+  try {
+    await sunucu.auth.signOut({ scope: 'local' })
+  } catch {
+    /* yerel oturum yine de silinir */
+  }
+  ayarlaYonetici({ durum: 'yok' })
 }
 
-/** Cihaz kasa / mutfak / TV ekranına geçtiğinde çağrılır: yönetici bölümleri yeniden şifre ister. */
-export function cihazKilitle() {
-  if (!yoneticiAcik) return
-  yoneticiAyarla(false)
-  duyur()
+export function isletmeSec(id: string) {
+  if (yonetici.durum !== 'var') return
+  const secili = yonetici.isletmeler.find((i) => i.id === id && i.tetra) ?? null
+  yaz('local', A_ISLETME, secili?.id ?? null)
+  ayarlaYonetici({ ...yonetici, secili })
 }
 
-/** Personel PIN'i: art arda 5 hatalı denemeden sonra bu cihazda 30 saniye kilitlenir. */
-export async function pinDogrula(pin: string, ekran: Yetki): Promise<Sonuc> {
+/* ───────── cihaz ───────── */
+function cihazUnut(not = '') {
+  kayit = null
+  personelOturum = null
+  cihazNotu = not
+  yaz('local', A_CIHAZ, null)
+  yaz('session', A_OTURUM, null)
+  ayarlaCihaz({ durum: 'yok' })
+}
+
+function personelDustu() {
+  personelOturum = null
+  yaz('session', A_OTURUM, null)
+  if (cihaz.durum === 'hazir') ayarlaCihaz({ ...cihaz, personel: null })
+}
+
+/** Cihaz işlevini cihaz anahtarı ve personel oturumuyla çağırır; oturum ya da cihaz düştüyse durumu günceller. */
+export async function cihazCagir<T>(ad: string, govde: Record<string, unknown> = {}, oturumlu = true): Promise<T> {
+  if (!kayit) throw new SunucuHatasi('Bu cihaz tanıtılmamış.', 'TT002')
+  try {
+    return await cagir<T>(ad, { p_anahtar: kayit.anahtar, ...(oturumlu ? { p_oturum: personelOturum } : {}), ...govde })
+  } catch (e) {
+    if (e instanceof SunucuHatasi) {
+      if (e.kod === 'TT001') personelDustu()
+      else if (e.kod === 'TT002') cihazUnut('Bu cihaz Yönetim bölümünden kaldırılmış. Yeniden tanıtmak için giriş yapın.')
+      else if (e.kod === 'TT003' && kayit) ayarlaCihaz({ durum: 'hata', ekran: kayit.ekran, ad: kayit.ad, isletme: kayit.isletme, hata: e.message, kapali: true })
+    }
+    throw e
+  }
+}
+
+let yenileniyor: Promise<void> | null = null
+/** Cihazın sunucudaki durumunu okur: işletme, açık personel oturumu, personel tanımlı mı. */
+export function cihazYenile(): Promise<void> {
+  if (!kayit) return Promise.resolve()
+  yenileniyor ??= (async () => {
+    const k = kayit
+    if (!k) return
+    try {
+      const y = await cihazCagir<CihazYaniti>('tetra_cihaz_durum')
+      if (!y.personel && personelOturum) {
+        personelOturum = null
+        yaz('session', A_OTURUM, null)
+      }
+      kayit = { ...k, ekran: y.cihaz.ekran, ad: y.cihaz.ad, isletme: y.isletme }
+      yaz('local', A_CIHAZ, kayit)
+      ayarlaCihaz({ durum: 'hazir', id: y.cihaz.id, ekran: y.cihaz.ekran, ad: y.cihaz.ad, isletme: y.isletme, kanal: y.kanal, personel: y.personel, personelTanimli: y.personel_tanimli })
+    } catch (e) {
+      if (kayit && !(e instanceof SunucuHatasi && (e.kod === 'TT002' || e.kod === 'TT003')))
+        ayarlaCihaz({ durum: 'hata', ekran: k.ekran, ad: k.ad, isletme: k.isletme, hata: hataMetni(e), kapali: false })
+    } finally {
+      yenileniyor = null
+    }
+  })()
+  return yenileniyor
+}
+if (kayit) void cihazYenile()
+
+/** Bu tableti kasa / mutfak / TV olarak tanıtır. Yönetici oturumu bu cihazda kapatılır: cihaz yalnızca kendi anahtarını taşır. */
+export async function cihazTanit(isletme: Isletme, ekran: CihazEkrani, ad: string): Promise<Sonuc> {
+  try {
+    const y = await cagir<{ tamam: boolean; hata?: string; anahtar?: string }>('tetra_cihaz_ekle', { p_restaurant: isletme.id, p_ekran: ekran, p_ad: ad })
+    if (!y.tamam || !y.anahtar) return { tamam: false, hata: y.hata ?? 'Cihaz tanıtılamadı.' }
+    kayit = { anahtar: y.anahtar, ekran, ad: ad.trim(), isletme: { id: isletme.id, slug: isletme.slug, ad: isletme.ad, logo: isletme.logo } }
+    if (!yaz('local', A_CIHAZ, kayit)) {
+      kayit = null
+      return { tamam: false, hata: 'Bu tarayıcı kayıt tutmaya izin vermiyor (gizli sekme olabilir). Cihaz tanıtılamadı.' }
+    }
+    personelOturum = null
+    yaz('session', A_OTURUM, null)
+    cihazNotu = ''
+    ayarlaCihaz({ durum: 'yukleniyor', ekran, ad: kayit.ad, isletme: kayit.isletme })
+    await cikis()
+    await cihazYenile()
+    return { tamam: true }
+  } catch (e) {
+    return { tamam: false, hata: hataMetni(e) }
+  }
+}
+
+/** Yönetici, üzerinde çalıştığı bu cihazın tanıtımını kaldırır. */
+export async function buCihaziKaldir(isletmeId: string): Promise<Sonuc> {
+  if (cihaz.durum !== 'hazir') {
+    cihazUnut()
+    return { tamam: true }
+  }
+  try {
+    await cagir('tetra_cihaz_sil', { p_restaurant: isletmeId, p_id: cihaz.id })
+    cihazUnut()
+    return { tamam: true }
+  } catch (e) {
+    return { tamam: false, hata: hataMetni(e) }
+  }
+}
+
+export async function pinDogrula(pin: string): Promise<Sonuc> {
   if (!/^\d{4}$/.test(pin)) return { tamam: false, hata: 'PIN 4 haneli olmalı.' }
-  const kilit = denemeKilidi(A_KILIT)
-  if (kilit.engel) return { tamam: false, hata: kilit.engel }
-  const kisi = await personelBul(pin, ekran)
-  if (!kisi) return { tamam: false, hata: kilit.hatali('PIN hatalı.') }
-  kilit.temizle()
-  personel = { id: kisi.id, ad: kisi.ad, ekran }
-  yaz('session', A_PERSONEL, personel)
-  duyur()
-  return { tamam: true }
+  try {
+    const y = await cihazCagir<{ tamam: boolean; hata?: string; oturum?: string; personel?: { id: string; ad: string } }>('tetra_pin', { p_pin: pin }, false)
+    if (!y.tamam || !y.oturum || !y.personel) return { tamam: false, hata: y.hata ?? 'PIN doğrulanamadı.' }
+    personelOturum = y.oturum
+    yaz('session', A_OTURUM, y.oturum)
+    if (cihaz.durum === 'hazir') ayarlaCihaz({ ...cihaz, personel: y.personel })
+    else await cihazYenile()
+    return { tamam: true }
+  } catch (e) {
+    return { tamam: false, hata: hataMetni(e) }
+  }
 }
 
-export function cihazSec(e: Ekran | null) {
-  cihaz = e
-  yaz('local', A_CIHAZ, e)
-  duyur()
+/** Ekranı kilitler: personel oturumu sunucuda da kapanır. */
+export async function kilitle() {
+  personelDustu()
+  try {
+    await cihazCagir('tetra_kilitle', {}, false)
+  } catch {
+    /* bağlantı yoksa yerel oturum yine de kapanmıştır; sunucudaki oturum süresi dolunca düşer */
+  }
 }
 
-export function personelCikis() {
-  personel = null
-  yaz('session', A_PERSONEL, null)
-  duyur()
-}
-
-export function cikis() {
-  oturum = null
-  personel = null
-  yaz('local', A_OTURUM, null)
-  yaz('session', A_PERSONEL, null)
-  yoneticiAyarla(false)
-  duyur()
+export const cihazNotuAl = () => {
+  const n = cihazNotu
+  cihazNotu = ''
+  return n
 }
 
 function abone(f: () => void) {
@@ -164,16 +256,5 @@ function abone(f: () => void) {
     dinleyenler.delete(f)
   }
 }
-export const useOturum = () => useSyncExternalStore(abone, () => oturum)
+export const useYonetici = () => useSyncExternalStore(abone, () => yonetici)
 export const useCihaz = () => useSyncExternalStore(abone, () => cihaz)
-export const useYoneticiAcik = () => useSyncExternalStore(abone, () => yoneticiAcik)
-const usePersonel = () => useSyncExternalStore(abone, () => personel)
-
-/** Bu ekranda oturumu açık personel. Yönetim'de silinmiş, girişi kapatılmış ya da yetkisi alınmışsa null döner. */
-export function useGecerliPersonel(ekran: Yetki) {
-  const p = usePersonel()
-  const liste = usePersonelListesi()
-  if (!p || p.ekran !== ekran) return null
-  const kayit = liste.find((k) => k.id === p.id)
-  return kayit && kayit.aktif && kayit.yetkiler.includes(ekran) ? { ...p, ad: kayit.ad } : null
-}

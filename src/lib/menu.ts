@@ -4,7 +4,7 @@
    damga değiştiğinde yeniden indirilir. */
 import { useEffect, useSyncExternalStore } from 'react'
 import { oku, yaz } from './depo'
-import { rpc } from './sunucu'
+import { cagir } from './sunucu'
 
 export type MenuUrun = { id: string; ad: string; aciklama: string; fiyat: number; gorsel: string; tukendi: boolean }
 export type MenuKategori = { id: string; ad: string; urunler: MenuUrun[] }
@@ -55,7 +55,7 @@ export async function menuYukle(slug: string, zorla = false): Promise<void> {
   if (!zorla && durum.menu && Date.now() - durum.menu.alindi < YENILEME_ARALIGI) return
   ayarla({ ...durum, yukleniyor: true })
   try {
-    const surumHam = await rpc<unknown>('menu_version', { p_slug: slug })
+    const surumHam = await cagir<unknown>('menu_version', { p_slug: slug })
     const surum = typeof surumHam === 'string' ? surumHam.slice(0, 200) : ''
     if (durum.slug !== slug) return
     if (surum && durum.menu && durum.menu.surum === surum) {
@@ -64,7 +64,7 @@ export async function menuYukle(slug: string, zorla = false): Promise<void> {
       yaz('local', `sr-menu:${slug}`, ayni)
       return ayarla({ slug, menu: ayni, yukleniyor: false, hata: '' })
     }
-    const menu = cevir(slug, surum, await rpc<HamMenu>('get_menu', { p_slug: slug }))
+    const menu = cevir(slug, surum, await cagir<HamMenu>('get_menu', { p_slug: slug }))
     if (durum.slug !== slug) return
     if (!menu) return ayarla({ ...durum, yukleniyor: false, hata: 'Bu adreste yayında bir NearMenu işletmesi bulunamadı.' })
     yaz('local', `sr-menu:${slug}`, menu)

@@ -1,185 +1,144 @@
+/* Tetra uçtan uca test (sunucuya bağlı sürüm). Gerekli ortam değişkenleri: TETRA_TEST_EPOSTA, TETRA_TEST_SIFRE (deneme işletmesinin sahibi).
+   Kullanım: U=https://tetra.neardiji.com TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/e2e.cjs */
 const { chromium } = require('playwright');
 const U = process.env.U || 'https://tetra.neardiji.com';
+const EPOSTA = process.env.TETRA_TEST_EPOSTA, SIFRE = process.env.TETRA_TEST_SIFRE;
+const B = 'https://rfwgjzkewtjpdcvrhepg.supabase.co', K = 'sb_publishable_ohHiomyazD8qr_mQXX9G-Q_DCEeD8j2';
+if (!EPOSTA || !SIFRE) { console.log('TETRA_TEST_EPOSTA ve TETRA_TEST_SIFRE gerekli'); process.exit(2); }
 const sonuc = [];
-const chk = (ad, ok, detay='') => { sonuc.push([ok ? 'GECTI' : 'KALDI', ad, detay]); console.log((ok ? 'GECTI ' : 'KALDI ') + ad + (detay ? ' :: ' + String(detay).slice(0,160) : '')); };
-const bilgi = (ad, detay) => console.log('BILGI ' + ad + ' :: ' + String(detay).slice(0,220));
+const chk = (ad, ok, d = '') => { sonuc.push(ok); console.log((ok ? 'GECTI ' : 'KALDI ') + ad + (d !== '' ? ' :: ' + String(typeof d === 'string' ? d : JSON.stringify(d)).slice(0, 170) : '')); };
 (async () => {
   const b = await chromium.launch({ proxy: { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' } });
-  const yeni = async (w=1180,h=820) => { const c = await b.newContext({ viewport:{width:w,height:h}, ignoreHTTPSErrors:true }); const p = await c.newPage(); p.__err=[]; await p.addInitScript(() => { window.__prints = 0; window.print = () => { window.__prints++; }; }); p.on('pageerror', e => p.__err.push(e.message)); p.on('console', x => x.type()==='error' && p.__err.push(x.text())); return [c,p]; };
-  const yol = p => p.url().replace(U,'');
+  const yeni = async (w = 1180, h = 820) => { const c = await b.newContext({ viewport: { width: w, height: h }, ignoreHTTPSErrors: true }); const p = await c.newPage(); p.__err = []; await p.addInitScript(() => { window.__prints = 0; window.print = () => { window.__prints++; }; }); p.on('pageerror', e => p.__err.push(e.message)); return [c, p]; };
+  const yol = p => p.url().replace(U, '');
   const dlg = p => p.locator('[role=dialog]');
-  const uyari = async p => (await dlg(p).locator('[role=alert]').first().textContent().catch(()=>'')) || '';
-  const giris = async p => { await p.goto(U+'/giris'); await p.waitForSelector('#giris-eposta'); await p.fill('#giris-eposta','sahip@isletme.com'); await p.fill('#giris-sifre','Guclu-Sifre-2026'); await p.click('button[type=submit]'); await p.waitForURL('**/ekran'); };
-  const personelEkle = async (p, ad, pin, {mutfak=false, kasa=true}={}) => { await p.click('main button:has-text("Personel ekle"), button:has-text("Personel ekle")'); await p.fill('#personel-ad', ad); await p.fill('#personel-pin', pin); if (mutfak) await dlg(p).locator('button[aria-pressed]:has-text("Mutfak")').click(); if (!kasa) await dlg(p).locator('button[aria-pressed]:has-text("Kasa")').click(); await dlg(p).locator('button[type=submit]').click(); await p.waitForTimeout(350); };
+  const api = async (p, ad, govde, jwt) => { const r = await p.request.post(`${B}/rest/v1/rpc/${ad}`, { headers: { apikey: K, 'Content-Type': 'application/json', ...(jwt ? { Authorization: 'Bearer ' + jwt } : {}) }, data: govde }); let j = null; try { j = await r.json(); } catch {} return { s: r.status(), j }; };
+  const giris = async (p, sifre = SIFRE) => { await p.goto(U + '/giris'); await p.waitForSelector('#giris-eposta'); await p.fill('#giris-eposta', EPOSTA); await p.fill('#giris-sifre', sifre); await p.click('button[type=submit]'); };
+
+  /* hazırlık: önceki koşudan kalan personel ve cihazları temizle (uygulamanın kendi işlevleriyle) */
+  let [c, p] = await yeni();
+  const tok = await (await p.request.post(`${B}/auth/v1/token?grant_type=password`, { headers: { apikey: K, 'Content-Type': 'application/json' }, data: { email: EPOSTA, password: SIFRE } })).json();
+  const JWT = tok.access_token; const RID = (await api(p, 'tetra_baslangic', {}, JWT)).j.find(x => x.tetra).id;
+  for (const x of (await api(p, 'tetra_personel_liste', { p_restaurant: RID }, JWT)).j) await api(p, 'tetra_personel_sil', { p_restaurant: RID, p_id: x.id }, JWT);
+  for (const x of (await api(p, 'tetra_cihaz_liste', { p_restaurant: RID }, JWT)).j) await api(p, 'tetra_cihaz_sil', { p_restaurant: RID, p_id: x.id }, JWT);
 
   /* ───── İŞLETME SAHİBİ ───── */
-  let [c,p] = await yeni();
-  await p.goto(U+'/'); await p.waitForSelector('#giris-eposta');
-  chk('S01 açılış girişe yönlendirir', yol(p)==='/giris');
-  await p.goto(U+'/yonetim'); await p.waitForTimeout(600); chk('S02 girişsiz /yonetim açılmaz', yol(p)==='/giris', yol(p));
-  await p.goto(U+'/kasa'); await p.waitForTimeout(600); chk('S03 girişsiz /kasa açılmaz', yol(p)==='/giris', yol(p));
-  await p.goto(U+'/giris'); await p.click('button[type=submit]'); await p.waitForTimeout(200);
-  chk('S04 boş giriş hata verir', (await p.textContent('[role=alert]')).includes('e-posta'));
-  await p.fill('#giris-eposta','sahip@'); await p.fill('#giris-sifre','12345678'); await p.click('button[type=submit]'); await p.waitForTimeout(200);
-  chk('S05 bozuk e-posta reddedilir', (await p.textContent('[role=alert]')).includes('e-posta') && yol(p)==='/giris');
-  await p.fill('#giris-eposta','sahip@isletme.com'); await p.fill('#giris-sifre','1234567'); await p.click('button[type=submit]'); await p.waitForTimeout(200);
-  chk('S06 kısa şifre reddedilir', (await p.textContent('[role=alert]')).includes('8 karakter'));
-  await giris(p); chk('S07 geçerli giriş ekran seçimine gider', yol(p)==='/ekran');
-  chk('S08 dört ekran kartı var', await p.locator('main button').count()===4);
-  await p.click('main button:has-text("Yönetim")'); await p.waitForURL('**/yonetim/personel');
+  await p.goto(U + '/'); await p.waitForSelector('#giris-eposta'); chk('S01 açılış girişe yönlendirir', yol(p) === '/giris');
+  for (const y of ['/yonetim', '/ekran', '/kasa', '/mutfak', '/tv']) { await p.goto(U + y); await p.waitForSelector('#giris-eposta'); chk('S02 girişsiz açılmaz: ' + y, yol(p) === '/giris', yol(p)); }
+  await p.click('button[type=submit]'); await p.waitForTimeout(200); chk('S03 boş giriş reddedilir', (await p.textContent('form [role=alert]')).includes('e-posta'));
+  await giris(p, 'yanlis-sifre-123'); await p.waitForTimeout(2500);
+  chk('S04 yanlış şifre sunucuda reddedilir', yol(p) === '/giris' && (await p.textContent('form [role=alert]')).includes('hatalı'), await p.textContent('form [role=alert]'));
+  await giris(p); await p.waitForURL('**/ekran'); await p.waitForSelector('main button:has-text("Yönetim")');
+  chk('S05 doğru şifreyle giriş yapılır, işletme kendiliğinden seçilir', (await p.textContent('header')).includes('Tetra Deneme'));
+  await p.click('main button:has-text("Yönetim")'); await p.waitForURL('**/yonetim/personel'); await p.waitForSelector('text=Henüz personel yok');
+  const ekle = async (ad, pin, { mutfak = false, kasa = true } = {}) => { await p.click('button:has-text("Personel ekle")'); await p.fill('#personel-ad', ad); await p.fill('#personel-pin', pin); if (mutfak) await dlg(p).locator('button[aria-pressed]:has-text("Mutfak")').click(); if (!kasa) await dlg(p).locator('button[aria-pressed]:has-text("Kasa")').click(); await dlg(p).locator('button[type=submit]').click(); await p.waitForTimeout(1200); };
   await p.click('button:has-text("Personel ekle")'); await dlg(p).locator('button[type=submit]').click(); await p.waitForTimeout(200);
-  chk('S09 boş personel formu reddedilir', (await uyari(p)).length>0, await uyari(p));
-  await p.fill('#personel-ad','A'); await p.fill('#personel-pin','1234'); await dlg(p).locator('button[type=submit]').click(); await p.waitForTimeout(200);
-  chk('S10 tek harfli ad reddedilir', (await uyari(p)).includes('2–40'));
-  await p.fill('#personel-ad','Ayşe'); await p.fill('#personel-pin','12a4'); chk('S11 PIN alanı harf kabul etmez', (await p.inputValue('#personel-pin'))==='124');
-  await p.fill('#personel-pin','1234'); await dlg(p).locator('button[type=submit]').click(); await p.waitForTimeout(350);
-  chk('S12 personel eklendi', await p.locator('li:has-text("Ayşe")').count()===1);
-  await personelEkle(p,'ayşe','5555'); chk('S13 aynı ad (küçük harf) reddedilir', (await uyari(p)).includes('zaten var'), await uyari(p)); await p.keyboard.press('Escape');
-  await personelEkle(p,'Mehmet','1234'); chk('S14 aynı PIN reddedilir', (await uyari(p)).includes('başka bir personelde'), await uyari(p));
-  await p.fill('#personel-pin','5678'); await dlg(p).locator('button[aria-pressed]:has-text("Mutfak")').click(); await dlg(p).locator('button[aria-pressed]:has-text("Kasa")').click(); await dlg(p).locator('button[type=submit]').click(); await p.waitForTimeout(350);
-  chk('S15 yalnız mutfak yetkili personel eklendi', await p.locator('li:has-text("Mehmet")').count()===1);
-  const xss = '<img src=x onerror="window.__xss=1">';
-  await personelEkle(p, xss, '9999');
-  chk('S16 ad alanına yazılan kod çalışmaz (XSS)', (await p.evaluate(()=>window.__xss))===undefined && await p.locator('li img[src="x"]').count()===0);
-  await p.click(`[aria-label="${xss.replace(/"/g,'\\"')}: sil"]`); await dlg(p).locator('button:text-is("Sil")').click(); await p.waitForTimeout(250);
-  chk('S17 personel silme onayla çalışır', await p.locator('main li, ul li').count()===2, await p.locator('ul li').count());
-  await personelEkle(p,'Kapalı Kişi','4321'); await p.click('[aria-label="Kapalı Kişi: girişi kapat"]'); await p.waitForTimeout(200);
-  chk('S18 personel girişi kapatılabilir', (await p.textContent('li:has-text("Kapalı Kişi")')).includes('Giriş kapalı'));
-  await p.click('[aria-label="Ayşe: düzenle"]'); await dlg(p).locator('button[type=submit]').click(); await p.waitForTimeout(300);
-  chk('S19 PIN boşken düzenleme eski PIN\'i korur', await dlg(p).count()===0);
-  await p.reload(); await p.waitForTimeout(800); chk('S20 yenilemede personel listesi kalıcı', await p.locator('ul li').count()===3, yol(p)+' '+await p.locator('ul li').count());
-  await p.click('nav a:has-text("NearMenu")'); await p.waitForTimeout(2500);
-  chk('S21 NearMenu bağlantısı işletmeyi gösterir', (await p.textContent('main, body')).includes('75 ürün'));
-  await p.fill('#nearmenu-adres','AB!'); await p.click('button:has-text("Bağla")'); await p.waitForTimeout(300);
-  chk('S22 geçersiz adres reddedilir', (await p.locator('form [role=alert]').textContent()).length>0 || (await p.inputValue('#nearmenu-adres'))!=='AB!', await p.inputValue('#nearmenu-adres'));
-  await p.fill('#nearmenu-adres','yok-boyle-isletme'); await p.click('button:has-text("Bağla")'); await p.waitForTimeout(3000);
-  chk('S23 olmayan işletme anlaşılır hata verir', (await p.textContent('body')).includes('bulunamadı'));
-  await p.fill('#nearmenu-adres','nearmenu-demo'); await p.click('button:has-text("Bağla")'); await p.waitForTimeout(2500);
-  chk('S24 doğru adrese dönünce menü geri gelir', (await p.textContent('body')).includes('75 ürün'));
-  chk('S25 sahip akışında konsol hatası yok', p.__err.filter(e=>!/404|Failed to load resource/.test(e)).length===0, p.__err.join(' | '));
+  chk('S06 boş personel formu reddedilir', (await dlg(p).locator('[role=alert]').textContent()).includes('2–40')); await p.keyboard.press('Escape');
+  await ekle('Ayşe', '1234'); chk('S07 personel eklenir (sunucuya yazılır)', await p.locator('li:has-text("Ayşe")').count() === 1);
+  await ekle('Mehmet', '1234', { mutfak: true, kasa: false }); chk('S08 aynı PIN sunucuda reddedilir', (await dlg(p).locator('[role=alert]').textContent()).includes('başka bir personelde'));
+  await p.fill('#personel-pin', '5678'); await dlg(p).locator('button[type=submit]').click(); await p.waitForTimeout(1200);
+  const xss = '<img src=x onerror="window.__xss=1">'; await ekle(xss, '9999');
+  chk('S09 ad alanına yazılan kod çalışmaz (XSS)', (await p.evaluate(() => window.__xss)) === undefined && await p.locator('li img[src="x"]').count() === 0 && await p.locator('ul li').count() === 3, await p.locator('ul li').count());
+  await p.click(`[aria-label="${xss.replace(/"/g, '\\"')}: sil"]`); await dlg(p).locator('button:text-is("Sil")').click(); await p.waitForTimeout(1200);
+  chk('S10 personel silinir', await p.locator('ul li').count() === 2);
+  await p.reload(); await p.waitForSelector('li:has-text("Ayşe")'); chk('S11 yenilemede oturum ve personel yerinde (sunucudan gelir)', await p.locator('ul li').count() === 2);
+  await p.click('nav a:has-text("Cihazlar")'); await p.waitForSelector('text=Henüz tanıtılmış cihaz yok'); chk('S12 cihaz listesi boş başlar', true);
+  await p.click('nav a:has-text("İşletme")'); await p.waitForSelector('text=75 ürün', { timeout: 10000 }); chk('S13 işletme sayfası NearMenu menüsünü gösterir', (await p.textContent('section')).includes('Tetra Deneme'));
+
+  /* cihaz tanıtma */
+  await p.click('button:has-text("Ekran seçimi")'); await p.click('main button:has-text("Kasa")'); await p.waitForSelector('#cihaz-ad');
+  await p.fill('#cihaz-ad', 'X'); await dlg(p).locator('button[type=submit]').click(); await p.waitForTimeout(1200);
+  chk('S14 çok kısa cihaz adı reddedilir', (await dlg(p).locator('[role=alert]').textContent()).includes('2–40'));
+  await p.fill('#cihaz-ad', 'Kasa 1'); await dlg(p).locator('button[type=submit]').click(); await p.waitForURL('**/kasa'); await p.waitForSelector('text=Personel girişi');
+  chk('S15 cihaz kasa olarak tanıtılır ve PIN ekranı gelir', true);
+  const depo = await p.evaluate(() => ({ yonetici: Object.keys(localStorage).filter(k => k.startsWith('tetra-yonetici')).length, cihaz: !!localStorage.getItem('tetra-cihaz'), sifre: JSON.stringify(localStorage).includes(document.title === '' ? '###' : 'access_token') }));
+  chk('GÜV-1 tanıtılan cihazda yönetici oturumu kalmaz', depo.yonetici === 0 && depo.cihaz && !depo.sifre, depo);
+  await p.goto(U + '/yonetim/personel'); await p.waitForSelector('#giris-eposta'); chk('GÜV-2 kasa cihazından Yönetim açılmaz (yeniden giriş ister)', yol(p) === '/giris');
+  await p.goto(U + '/ekran'); await p.waitForSelector('#giris-eposta'); chk('GÜV-3 kasa cihazından ekran seçimi açılmaz', yol(p) === '/giris');
+  const kasaAnahtar = await p.evaluate(() => JSON.parse(localStorage.getItem('tetra-cihaz')).anahtar);
+  chk('GÜV-4 cihaz anahtarıyla yönetici işlevi çağrılamaz', (await api(p, 'tetra_personel_liste', { p_restaurant: RID })).s >= 400 && (await api(p, 'tetra_cihaz_ekle', { p_restaurant: RID, p_ekran: 'kasa', p_ad: 'Sızma' })).s >= 400);
 
   /* ───── KASİYER ───── */
-  await p.goto(U+'/kasa'); await p.waitForTimeout(700); chk('K01 PIN girilmeden kasa açılmaz', yol(p)==='/pin/kasa', yol(p));
-  await p.keyboard.type('5678'); await p.waitForTimeout(500); chk('K02 mutfak personelinin PIN\'i kasada geçmez', yol(p)==='/pin/kasa' && (await p.textContent('[role=alert]')).includes('hatalı'));
-  await p.keyboard.type('4321'); await p.waitForTimeout(500); chk('K03 girişi kapalı personelin PIN\'i geçmez', yol(p)==='/pin/kasa');
-  for (let i=0;i<3;i++){ await p.keyboard.type('0000'); await p.waitForTimeout(350); }
-  chk('K04 beş hatalı denemede kilitlenir', (await p.textContent('[role=alert]')).includes('Çok fazla'), await p.textContent('[role=alert]'));
-  await p.keyboard.type('1234'); await p.waitForTimeout(500); chk('K05 kilitliyken doğru PIN de geçmez', yol(p)==='/pin/kasa');
-  await p.evaluate(()=>localStorage.removeItem('sr-pin-kilit')); await p.keyboard.type('1234'); await p.waitForTimeout(900);
-  bilgi('GÜV-A PIN kilidi tarayıcı kaydı silinerek aşılabiliyor (tarayıcı içi denetim; sunucuyla kapanır)', 'kilit silinince: '+yol(p));
-  if (yol(p)!=='/kasa') { await p.goto(U+'/pin/kasa'); await p.keyboard.type('1234'); await p.waitForTimeout(900); }
-  await p.waitForSelector('main section button'); await p.waitForTimeout(1500);
-  const kutu = p.locator('main section button');
-  chk('K06 kasada NearMenu ürünleri geldi', await kutu.count()===75, await kutu.count());
-  await p.fill('#kasa-ara','PİZZA'); await p.waitForTimeout(250); const pz = await kutu.count();
-  await p.fill('#kasa-ara','pizza'); await p.waitForTimeout(250);
-  chk('K07 arama büyük/küçük ve Türkçe harf duyarsız', pz>0 && pz===await kutu.count(), pz+' / '+await kutu.count());
-  await p.fill('#kasa-ara','zzzqqq'); await p.waitForTimeout(250); chk('K08 sonuçsuz arama mesaj verir', (await p.textContent('main')).includes('eşleşen ürün yok'));
-  await p.fill('#kasa-ara',''); await p.click('[aria-label="Kategoriler"] button:has-text("Pizza")'); await p.waitForTimeout(250);
-  chk('K09 kategori süzgeci çalışır', await kutu.count()===6, await kutu.count());
-  await p.click('[aria-label="Kategoriler"] button:has-text("Tümü")'); await p.waitForTimeout(200);
-  const acik = p.locator('main section button:not([disabled])');
-  for (let i=0;i<101;i++) await acik.nth(0).click({ delay: 0 });
-  const sep = p.locator('aside');
-  chk('K10 adet 99 ile sınırlanır', (await sep.locator('li').first().textContent()).includes('99'), await sep.locator('li').first().textContent());
-  await sep.locator('[aria-label$=": azalt"]').first().click(); await p.waitForTimeout(100);
-  chk('K11 azalt düğmesi çalışır', (await sep.locator('li').first().textContent()).includes('98'));
-  await p.click('aside button:has-text("Sepeti boşalt")'); await p.waitForTimeout(150); chk('K12 sepeti boşalt çalışır', await sep.locator('li').count()===0);
-  await acik.nth(0).click(); await sep.locator('li button:has-text("Not ekle")').click(); await dlg(p).locator('button:has-text("Soğansız")').click(); await dlg(p).locator('button:has-text("Kaydet")').click(); await p.waitForTimeout(200);
-  await acik.nth(0).click(); await p.waitForTimeout(150);
-  chk('K13 aynı ürün farklı notla ayrı satır olur', await sep.locator('li').count()===2, await sep.locator('li').count());
-  await sep.locator('li button:has-text("Not ekle")').click(); await dlg(p).locator('button:has-text("Soğansız")').click(); await dlg(p).locator('button:has-text("Kaydet")').click(); await p.waitForTimeout(200);
-  chk('K14 aynı nota getirilince satırlar birleşir', await sep.locator('li').count()===1 && (await sep.locator('li').textContent()).includes('2'), await sep.locator('li').allTextContents());
-  await sep.locator('li button').first().click(); await p.fill('#kasa-not', '<script>window.__xss2=1</script>'); await dlg(p).locator('button:has-text("Kaydet")').click(); await p.waitForTimeout(200);
-  chk('K15 nota yazılan kod çalışmaz (XSS)', (await p.evaluate(()=>window.__xss2))===undefined);
-  await sep.locator('li button').first().click(); await p.fill('#kasa-not', 'x'.repeat(60)); for (const n of ['Acısız','Az pişmiş','İyi pişmiş','Sossuz']) await dlg(p).locator(`button:has-text("${n}")`).click();
-  chk('K16 80 karakteri aşan not kaydedilemez', await dlg(p).locator('button:has-text("Kaydet")').isDisabled()); await p.keyboard.press('Escape');
-  await acik.nth(3).click(); await p.reload(); await p.waitForSelector('main section button'); await p.waitForTimeout(600);
-  chk('K17 yenilemede sepet ve kasa oturumu korunur', yol(p)==='/kasa' && await sep.locator('li').count()===2, yol(p)+' '+await sep.locator('li').count());
-  const toplamYazi = await sep.locator('text=Toplam').locator('..').textContent();
+  await p.goto(U + '/kasa'); await p.waitForSelector('text=Personel girişi');
+  await p.keyboard.type('5678'); await p.waitForSelector('[role=alert]:has-text("hatalı")'); chk('K01 mutfak PIN\'i kasada geçmez (sunucu)', yol(p) === '/kasa' && await p.locator('main section button').count() === 0);
+  await p.keyboard.type('1234'); await p.waitForSelector('main section button', { timeout: 15000 }); await p.waitForTimeout(1200);
+  const kutu = p.locator('main section button'); const acik = p.locator('main section button:not([disabled])'); const sep = p.locator('aside');
+  chk('K02 doğru PIN ile kasa açılır, 75 ürün gelir', await kutu.count() === 75, await kutu.count());
+  chk('K03 üst barda işletme ve personel görünür', (await p.textContent('header')).includes('Tetra Deneme') && (await p.textContent('header')).includes('Ayşe'));
+  await p.fill('#kasa-ara', 'PİZZA'); await p.waitForTimeout(250); chk('K04 arama çalışır', await kutu.count() === 6, await kutu.count()); await p.fill('#kasa-ara', '');
+  const once = (await api(p, 'tetra_siparisler', { p_anahtar: kasaAnahtar, p_oturum: await p.evaluate(() => JSON.parse(sessionStorage.getItem('tetra-personel-oturum'))) })).j.siparisler.length;
+  await acik.nth(0).click(); await acik.nth(0).click(); await acik.nth(5).click();
+  await sep.locator('li button:has-text("Not ekle")').first().click(); await dlg(p).locator('button:has-text("Soğansız")').click(); await dlg(p).locator('button:has-text("Kaydet")').click(); await p.waitForTimeout(200);
+  /* sepetteki fiyatı tarayıcıdan oyna */
+  await p.evaluate(() => { const s = JSON.parse(sessionStorage.getItem('tetra-sepet')); s.forEach(x => x.fiyat = 1); sessionStorage.setItem('tetra-sepet', JSON.stringify(s)); });
+  const toplamYazi = (await sep.locator('text=Toplam').locator('..').textContent()).replace('Toplam', '');
   await sep.locator('button:has-text("Paket")').click(); await sep.locator('button:has-text("Siparişi tamamla")').click(); await p.waitForTimeout(250);
-  chk('K18 ödeme penceresi toplamı gösterir', (await dlg(p).textContent()).includes(toplamYazi.replace('Toplam','')), toplamYazi);
-  await dlg(p).locator('button:has-text("Nakit")').evaluate(b => { b.click(); b.click(); }); await p.waitForTimeout(500);
-  const sip1 = await p.evaluate(()=>JSON.parse(localStorage.getItem('sr-veri')).siparisler);
-  chk('K19 çift dokunuş tek sipariş oluşturur', sip1.length===1, 'oluşan sipariş: '+sip1.length);
-  chk('K20 ilk sipariş numarası 1', sip1[0].no===1 && (await dlg(p).locator('p.text-8xl').textContent())===String(sip1[sip1.length-1].no), JSON.stringify(sip1.map(s=>s.no)));
-  chk('K21 fiş otomatik yazdırılır', (await p.evaluate(()=>window.__prints))>=1 && await p.locator('.fis-kagit').count()===1);
-  chk('K22 sipariş tutarı sepet toplamıyla aynı', sip1[0].toplam===sip1[0].kalemler.reduce((t,k)=>t+k.fiyat*k.adet,0) && sip1[0].tur==='paket' && sip1[0].odeme==='nakit');
-  chk('K23 takip kodu tahmin edilemez uzunlukta', /^[0-9a-f]{32}$/.test(sip1[0].kod), sip1[0].kod.length);
-  const takipKod = sip1[0].kod;
-  await dlg(p).locator('button:has-text("Yeni sipariş")').click(); chk('K24 sipariş sonrası sepet boşalır', await sep.locator('li').count()===0);
-  await acik.nth(5).click(); await sep.locator('button:has-text("Siparişi tamamla")').click(); await dlg(p).locator('button:has-text("Kart")').click(); await p.waitForTimeout(400);
-  const sonNo = Number(await dlg(p).locator('p.text-8xl').textContent()); const onceki = sip1.length;
-  chk('K25 numara sırayla artar', sonNo===onceki+1, sonNo+' (önceki sipariş sayısı '+onceki+')');
+  await dlg(p).locator('button:has-text("Kart")').evaluate(x => { x.click(); x.click(); }); await p.waitForSelector('[role=dialog] p.text-8xl', { timeout: 15000 });
+  const no1 = Number(await dlg(p).locator('p.text-8xl').textContent());
+  const liste1 = (await api(p, 'tetra_siparisler', { p_anahtar: kasaAnahtar, p_oturum: await p.evaluate(() => JSON.parse(sessionStorage.getItem('tetra-personel-oturum'))) })).j.siparisler;
+  chk('K05 çift dokunuş sunucuda tek sipariş oluşturur', liste1.length === once + 1, `önce ${once}, sonra ${liste1.length}`);
+  const s1 = liste1.find(x => x.no === no1);
+  chk('K06 sipariş sunucuya yazıldı; tutar ekrandaki toplamla aynı', !!s1 && (await dlg(p).textContent()).includes(toplamYazi) && s1.toplam > 100, { toplam: s1?.toplam, ekran: toplamYazi });
+  chk('K07 not, tür, ödeme ve kasiyer sunucuda doğru', s1.kalemler[0].not === 'Soğansız' && s1.tur === 'paket' && s1.odeme === 'kart' && s1.personel_ad === 'Ayşe', s1.kalemler[0]);
+  chk('K08 fiş otomatik yazdırılır, QR takip adresini taşır', (await p.evaluate(() => window.__prints)) >= 1 && await p.locator('.fis-kagit').count() === 1);
+  await dlg(p).locator('button:has-text("Yeni sipariş")').click(); chk('K09 sipariş sonrası sepet boşalır', await sep.locator('li').count() === 0);
+  await acik.nth(2).click(); await sep.locator('button:has-text("Siparişi tamamla")').click(); await dlg(p).locator('button:has-text("Nakit")').click(); await p.waitForSelector('[role=dialog] p.text-8xl');
+  const no2 = Number(await dlg(p).locator('p.text-8xl').textContent()); chk('K10 numara sırayla artar', no2 === no1 + 1, `${no1} → ${no2}`);
   await dlg(p).locator('button:has-text("Yeni sipariş")').click();
-  await p.click('[aria-label^="Bugünkü siparişler"]'); await p.waitForTimeout(250);
-  const pr0 = await p.evaluate(()=>window.__prints); await dlg(p).locator('[title="Fiş yazdır"]').first().click(); await p.waitForTimeout(300);
-  chk('K26 fiş yeniden yazdırılabilir', (await p.evaluate(()=>window.__prints))===pr0+1);
-  await dlg(p).locator(`[aria-label="${sonNo} numaralı siparişi iptal et"]`).click(); await dlg(p).locator('button:text-is("İptal et")').click(); await p.waitForTimeout(250);
-  chk('K27 iptal edilen sipariş toplamdan düşer', (await dlg(p).locator('.grid-cols-3').textContent()).includes('Kart₺0,00'), await dlg(p).locator('.grid-cols-3').textContent());
-  await p.keyboard.press('Escape');
-  await acik.nth(6).click(); const hedefAd = await acik.nth(6).getAttribute('aria-label');
-  await p.click('[aria-label="Tükendi işaretleme modu"]'); await p.locator(`main section button[aria-label="${hedefAd}"]`).click(); await p.waitForTimeout(200); await p.click('[aria-label="Tükendi işaretleme modu"]');
-  chk('K28a tükenen ürün için sepette uyarı çıkar', (await sep.textContent()).includes('sepetten çıkarıldı'));
-  const sepetteKaldi = await sep.locator('li').count();
-  await sep.locator('button:has-text("Siparişi tamamla")').click().catch(()=>{}); await p.waitForTimeout(200);
-  const odemeAcildi = await dlg(p).locator('button:has-text("Nakit")').count();
-  chk('K28 tükendi yapılan ürün sepetten düşer / sipariş edilemez', sepetteKaldi===0 || odemeAcildi===0, 'sepette '+sepetteKaldi+' satır, ödeme penceresi '+(odemeAcildi?'açıldı':'açılmadı'));
-  if (odemeAcildi) await p.keyboard.press('Escape');
-  await sep.locator('button:has-text("Sepeti boşalt")').click().catch(()=>{});
-  /* fiyat oynama: sepet kaydındaki fiyatı elle değiştir */
-  await acik.nth(0).click(); await p.waitForTimeout(150);
-  await p.evaluate(()=>{ const s=JSON.parse(sessionStorage.getItem('sr-sepet')); s[0].fiyat=1; sessionStorage.setItem('sr-sepet', JSON.stringify(s)); });
+  await p.click('[aria-label^="Bugünkü siparişler"]'); await p.waitForTimeout(400);
+  await dlg(p).locator(`[aria-label="${no2} numaralı siparişi iptal et"]`).click(); await dlg(p).locator('button:text-is("İptal et")').click(); await p.waitForFunction((n) => [...document.querySelectorAll('[role=dialog] li')].some(li => li.querySelector('span.w-12')?.textContent === String(n) && [...li.querySelectorAll('span')].some(s => s.textContent === 'İptal')), no2, { timeout: 15000 });
+  const iptalli = (await api(p, 'tetra_siparisler', { p_anahtar: kasaAnahtar, p_oturum: await p.evaluate(() => JSON.parse(sessionStorage.getItem('tetra-personel-oturum'))) })).j.siparisler.find(x => x.no === no2);
+  chk('K11 iptal sunucuya işlenir', iptalli.durum === 'iptal'); await p.keyboard.press('Escape');
   await p.reload(); await p.waitForSelector('main section button'); await p.waitForTimeout(800);
-  await sep.locator('button:has-text("Siparişi tamamla")').click(); await dlg(p).locator('button:has-text("Nakit")').click(); await p.waitForTimeout(400);
-  const sip2 = await p.evaluate(()=>JSON.parse(localStorage.getItem('sr-veri')).siparisler); const son = sip2[sip2.length-1];
-  chk('GÜV-B sepetteki fiyat elle değiştirilince sipariş menü fiyatıyla kaydedilir', son.kalemler[0].fiyat>1, 'kaydedilen fiyat (kuruş): '+son.kalemler[0].fiyat);
+  chk('K12 yenilemede kasa oturumu sürer, sipariş sayacı sunucudan gelir', yol(p) === '/kasa' && (await p.getAttribute('[aria-label^="Bugünkü siparişler"]', 'aria-label')).endsWith(String(once + 2)), await p.getAttribute('[aria-label^="Bugünkü siparişler"]', 'aria-label'));
+  /* tükendi → NearMenu */
+  const hedefAd = await acik.nth(7).getAttribute('aria-label'); const urunAd = hedefAd.split(',')[0];
+  await acik.nth(7).click(); await p.click('[aria-label="Tükendi işaretleme modu"]'); await p.locator(`main section button[aria-label="${hedefAd}"]`).click();
+  await p.waitForSelector(`main section button[aria-label="${hedefAd}, tükendi"]`, { timeout: 10000 });
+  const menuSonra = (await api(p, 'get_menu', { p_slug: 'tetra-test' })).j.categories.flatMap(k => k.items).find(u => u.name === urunAd);
+  chk('K13 kasadan tükendi → NearMenu menüsünde de tükendi', menuSonra.sold === true, urunAd);
+  chk('K14 tükenen ürün sepetten düşer ve uyarı çıkar', (await sep.textContent()).includes('sepetten çıkarıldı'));
+  await p.locator(`main section button[aria-label="${hedefAd}, tükendi"]`).click(); await p.waitForSelector(`main section button[aria-label="${hedefAd}"]`, { timeout: 10000 }); await p.click('[aria-label="Tükendi işaretleme modu"]');
+  chk('K15 tükendi geri açılır', (await api(p, 'get_menu', { p_slug: 'tetra-test' })).j.categories.flatMap(k => k.items).find(u => u.name === urunAd).sold === false);
+  /* bağlantı kopukken sipariş */
+  if (await sep.locator('button:text-is("Tamam")').count()) await sep.locator('button:text-is("Tamam")').click(); if (await sep.locator('li').count()) await sep.locator('button:has-text("Sepeti boşalt")').first().click(); await acik.nth(1).click();
+  await c.route('**/rest/v1/rpc/tetra_siparis_olustur', r => r.abort());
+  await sep.locator('button:has-text("Siparişi tamamla")').click(); await dlg(p).locator('button:has-text("Nakit")').click(); await p.waitForSelector('[role=dialog] [role=alert]:has-text("ulaşılamadı")', { timeout: 15000 });
+  chk('K16 bağlantı yokken sipariş kaybolmaz: hata gösterilir, sepet durur', await dlg(p).locator('button:has-text("Nakit")').count() === 1);
+  await c.unroute('**/rest/v1/rpc/tetra_siparis_olustur'); await dlg(p).locator('button:has-text("Nakit")').click(); await p.waitForSelector('[role=dialog] p.text-8xl', { timeout: 15000 });
+  const no3 = Number(await dlg(p).locator('p.text-8xl').textContent()); chk('K17 bağlantı gelince aynı sipariş tamamlanır', no3 === no2 + 1, no3);
   await dlg(p).locator('button:has-text("Yeni sipariş")').click();
-  /* çevrimdışı */
-  await c.route('**/rest/v1/rpc/get_menu', r => r.abort());
-  await p.reload(); await p.waitForTimeout(1500);
-  chk('K29 bağlantı kopunca kasa son menüyle çalışır', await kutu.count()===75, await kutu.count());
-  await c.unroute('**/rest/v1/rpc/get_menu');
-  /* kasadayken personel silinirse */
-  const p2 = await c.newPage(); await p2.goto(U+'/yonetim/personel'); await p2.waitForTimeout(900);
-  const kilitli = await p2.locator('#yonetici-sifre').count()===1 && await p2.locator('[aria-label="Ayşe: sil"]').count()===0;
-  chk('GÜV-C kasa cihazından şifresiz Yönetim\'e girilemez', kilitli, kilitli ? 'şifre soruldu' : 'adres yazılarak şifresiz açıldı');
-  await p2.goto(U+'/ekran'); await p2.waitForTimeout(600); chk('GÜV-C2 kasa cihazından şifresiz ekran seçimine girilemez', await p2.locator('#yonetici-sifre').count()===1);
-  await p2.fill('#yonetici-sifre','yanlis-sifre-1'); await p2.click('button[type=submit]'); await p2.waitForTimeout(400);
-  chk('GÜV-C3 yanlış yönetici şifresi reddedilir', (await p2.textContent('[role=alert]')).includes('hatalı') && await p2.locator('#yonetici-sifre').count()===1, await p2.textContent('[role=alert]'));
-  for (let i=0;i<4;i++){ await p2.fill('#yonetici-sifre','yanlis-sifre-'+i); await p2.click('button[type=submit]'); await p2.waitForTimeout(350); }
-  chk('GÜV-C4 beş yanlış şifrede kilitlenir', (await p2.textContent('[role=alert]')).includes('Çok fazla'), await p2.textContent('[role=alert]'));
-  await p2.evaluate(()=>localStorage.removeItem('sr-yonetici-kilit'));
-  await p2.fill('#yonetici-sifre','Guclu-Sifre-2026'); await p2.click('button[type=submit]'); await p2.waitForTimeout(600);
-  chk('GÜV-C5 doğru şifre kilidi açar', await p2.locator('main button:has-text("Yönetim")').count()===1, yol(p2));
-  await p2.goto(U+'/yonetim/personel'); await p2.waitForTimeout(700);
-  await p2.click('[aria-label="Ayşe: sil"]'); await p2.locator('[role=dialog] button:text-is("Sil")').click(); await p2.waitForTimeout(400);
-  await p2.close(); await p.bringToFront(); await p.waitForTimeout(900);
-  chk('K30 silinen personelin açık kasa oturumu hemen kapanır', yol(p)==='/pin/kasa', yol(p));
-  chk('K31 kasiyer akışında sayfa hatası yok', p.__err.filter(e=>!/Failed to load resource|ERR_FAILED|net::/.test(e)).length===0, p.__err.join(' | '));
-  await c.close();
+  chk('K18 kasiyer akışında sayfa hatası yok', p.__err.length === 0, p.__err.join(' | '));
 
-  /* ───── MÜŞTERİ ───── */
-  [c,p] = await yeni(390,800);
-  await p.goto(U+'/t/'+takipKod); await p.waitForTimeout(1500);
-  chk('M01 başka telefonda takip sayfası açılır, bozulmaz', (await p.textContent('main')).includes('Sipariş bulunamadı') && p.__err.length===0, p.__err.join('|'));
-  bilgi('M02 başka telefonda takip', 'sipariş bulunamadı diyor (sunucu yok; bilinen eksik)');
-  await p.goto(U+'/t/%3Cscript%3Ealert(1)%3C%2Fscript%3E'); await p.waitForTimeout(800); chk('M03 bozuk takip adresi sayfayı kırmaz', (await p.textContent('body')).includes('bulunamadı') && p.__err.length===0, yol(p));
-  await p.goto(U+'/yonetim'); await p.waitForTimeout(600); chk('M04 müşteri telefonundan yönetim açılmaz', yol(p)==='/giris');
-  const sw = await p.evaluate(()=>document.documentElement.scrollWidth); chk('M05 takip sayfası telefonda taşmıyor', sw<=390, sw);
-  await c.close();
+  /* ───── MÜŞTERİ (başka telefon) ───── */
+  const [c2, m] = await yeni(390, 800);
+  await m.goto(U + '/t/' + s1.takip_kod); await m.waitForSelector('h1.text-8xl', { timeout: 15000 });
+  chk('M01 müşteri başka telefonda siparişini görür', (await m.textContent('h1')) === String(no1) && (await m.textContent('[aria-current=step]')).includes('Hazırlanıyor'));
+  chk('M02 takip sayfası işletmeyi gösterir, tutar ve ürün göstermez', !(await m.textContent('main')).includes('₺'));
+  await m.goto(U + '/t/' + 'f'.repeat(32)); await m.waitForSelector('text=Sipariş bulunamadı'); chk('M03 yanlış takip kodu "bulunamadı" der', true);
+  await m.goto(U + '/yonetim'); await m.waitForSelector('#giris-eposta'); chk('M04 müşteri telefonundan yönetim açılmaz', yol(m) === '/giris');
+  chk('M05 takip sayfası telefonda taşmıyor', (await m.evaluate(() => document.documentElement.scrollWidth)) <= 390);
+  await c2.close();
 
-  /* ───── GÜVENLİK (tarayıcı) ───── */
-  [c,p] = await yeni();
-  await p.goto(U+'/giris'); await p.evaluate(()=>localStorage.setItem('sr-oturum', JSON.stringify({eposta:'saldirgan@x.com'}))); await p.goto(U+'/yonetim/personel'); await p.waitForTimeout(800);
-  chk('GÜV-D tarayıcı kaydına elle e-posta yazarak giriş atlanamaz', yol(p)==='/giris', 'açılan sayfa: '+yol(p));
-  for (const y of ['/.env','/.git/config','/package.json','/wrangler.jsonc','/src/lib/oturum.ts']) { const r = await p.request.get(U+y); chk('GÜV-G gizli/dosya yolu 404 döner: '+y, r.status()===404, r.status()); }
-  const inl = await p.evaluate(()=>{ const s=document.createElement('script'); s.textContent='window.__inl=1'; document.head.appendChild(s); return window.__inl; });
-  chk('GÜV-E sayfaya sonradan eklenen kod çalışmaz (CSP)', inl===undefined);
-  const dis = await p.evaluate(()=>fetch('https://example.com/').then(()=> 'gitti').catch(()=> 'engellendi'));
-  chk('GÜV-F sayfa yabancı sunucuya veri gönderemez (CSP)', dis==='engellendi', dis);
-  await c.close();
-  await b.close();
-  const k = sonuc.filter(s=>s[0]==='KALDI');
-  console.log(`\nTOPLAM ${sonuc.length} · GECTI ${sonuc.length-k.length} · KALDI ${k.length}`);
-})().catch(e => { console.log('TEST HATASI', e.message.split('\n')[0]); process.exit(1); });
+  /* ───── kilit, PIN kilidi, cihazın kaldırılması ───── */
+  await p.click('[aria-label="Kasayı kilitle"]'); await p.waitForSelector('text=Personel girişi'); chk('K19 kilitle PIN ekranına döner', true);
+  for (let i = 0; i < 5; i++) { await p.keyboard.type('0000'); await p.waitForTimeout(900); }
+  chk('K20 beş hatalı PIN\'de sunucu kilitler', (await p.textContent('[role=alert]')).includes('Çok fazla'), await p.textContent('[role=alert]'));
+  await p.evaluate(() => { localStorage.removeItem('tetra-pin-kilit'); sessionStorage.clear(); }); await p.reload(); await p.waitForSelector('text=Personel girişi'); await p.keyboard.type('1234'); await p.waitForTimeout(1500);
+  chk('GÜV-5 PIN kilidi tarayıcı kaydı silinerek aşılamaz (sunucuda)', yol(p) === '/kasa' && await p.locator('main section button').count() === 0 && (await p.textContent('[role=alert]')).includes('Çok fazla'), await p.textContent('[role=alert]'));
+  /* yönetici başka cihazdan bu cihazı kaldırır */
+  const [c3, y] = await yeni(); await giris(y); await y.waitForURL('**/ekran'); await y.click('main button:has-text("Yönetim")'); await y.click('nav a:has-text("Cihazlar")'); await y.waitForSelector('li:has-text("Kasa 1")');
+  chk('S16 yönetici cihazı listede görür', (await y.textContent('li:has-text("Kasa 1")')).includes('Kasa'));
+  await y.click('[aria-label="Kasa 1: kaldır"]'); await y.locator('[role=dialog] button:text-is("Kaldır")').click(); await y.waitForSelector('text=Henüz tanıtılmış cihaz yok'); await c3.close();
+  await p.reload(); await p.waitForSelector('#giris-eposta', { timeout: 15000 });
+  chk('GÜV-6 kaldırılan cihaz anında dışarıda kalır', yol(p) === '/giris' && (await p.textContent('form')).includes('kaldırılmış') && (await p.evaluate(() => localStorage.getItem('tetra-cihaz'))) === null);
+  chk('GÜV-7 kaldırılan cihazın anahtarı sunucuda geçersiz', (await api(p, 'tetra_cihaz_durum', { p_anahtar: kasaAnahtar })).j?.code === 'TT002');
+  /* uydurma cihaz kaydı */
+  await p.evaluate(() => localStorage.setItem('tetra-cihaz', JSON.stringify({ anahtar: 'a'.repeat(64), ekran: 'kasa', ad: 'Sahte', isletme: { id: 'x', slug: 'tetra-test', ad: 'Sahte', logo: '' } }))); await p.goto(U + '/kasa'); await p.waitForSelector('#giris-eposta', { timeout: 15000 });
+  chk('GÜV-8 uydurma cihaz kaydıyla kasa açılmaz', yol(p) === '/giris');
+  const inl = await p.evaluate(() => { const s = document.createElement('script'); s.textContent = 'window.__inl=1'; document.head.appendChild(s); return window.__inl; });
+  chk('GÜV-9 sayfaya sonradan eklenen kod çalışmaz (CSP)', inl === undefined);
+  for (const yy of ['/.env', '/package.json']) { const r = await p.request.get(U + yy); chk('GÜV-10 dosya yolu 404 döner: ' + yy, r.status() === 404, r.status()); }
+  await c.close(); await b.close();
+  console.log(`\nTOPLAM ${sonuc.length} · GECTI ${sonuc.filter(Boolean).length} · KALDI ${sonuc.filter(x => !x).length}`);
+})().catch(e => { console.log('TEST HATASI', e.message.split('\n').slice(0, 4).join(' | ')); process.exit(1); });

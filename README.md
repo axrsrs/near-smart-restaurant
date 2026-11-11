@@ -27,25 +27,35 @@ NEAR tek platformdur; işletmeye iki paketten biri açılır:
 
 ## Ekranlar
 
-| Adres | Ekran |
-| --- | --- |
-| `/giris` | İşletme girişi (e-posta + şifre) |
-| `/ekran` | Bu cihaz hangi ekran olacak: Kasa, Mutfak, TV ekranı, Yönetim |
-| `/pin/kasa`, `/pin/mutfak` | Personel girişi (4 haneli PIN) |
-| `/kasa` | Kasa: ürünler, sepet, not, Burada/Paket, Nakit/Kart, günlük sıra numarası, fiş, QR |
-| `/t/<kod>` | Müşterinin QR ile açtığı sipariş takip sayfası |
-| `/yonetim/personel` | Personel, ekran yetkileri, PIN |
-| `/yonetim/isletme` | NearMenu bağlantısı |
-| `/mutfak`, `/tv` | Sunucu bağlandıktan sonra kurulacak |
+| Adres | Kim | Ekran |
+| --- | --- | --- |
+| `/giris` | Yönetici | NearMenu hesabıyla giriş (e-posta + şifre) |
+| `/ekran` | Yönetici | Bu cihazı Kasa / Mutfak / TV olarak tanıt ya da Yönetim'e geç |
+| `/yonetim/personel` | Yönetici | Personel, ekran yetkileri, PIN |
+| `/yonetim/cihazlar` | Yönetici | Tanıtılmış cihazlar, kaldırma |
+| `/yonetim/isletme` | Yönetici | İşletme ve NearMenu bağlantısı |
+| `/kasa` | Kasa cihazı | PIN, ürünler, sepet, not, Burada/Paket, Nakit/Kart, sıra numarası, fiş, QR |
+| `/mutfak`, `/tv` | Cihaz | Bir sonraki adımda kurulacak |
+| `/t/<kod>` | Müşteri | QR ile açılan sipariş takip sayfası |
 
-Şu an **önizleme** modunda çalışır: ürünler NearMenu'den canlı okunur; siparişler, personel ve "tükendi"
-işaretleri bu cihazın tarayıcısında saklanır (`src/lib/veri.ts`); yönetici girişi yalnızca biçim olarak
-denetlenir (`src/lib/oturum.ts`). Personel PIN'i gerçekten denetlenir; art arda 5 hatalı denemede
-30 saniye kilitlenir. Sunucu bağlanınca yalnızca bu dosyaların içi değişir.
+## Kimlik ve yetki
+
+İki ayrı kimlik vardır:
+
+- **Yönetici:** İşletme sahibi NearMenu hesabıyla girer (Supabase Auth). Personeli ve cihazları yönetir.
+- **Cihaz:** Yönetici bir tableti Kasa / Mutfak / TV olarak tanıttığında sunucu o cihaza bir anahtar verir ve
+  yönetici oturumu o cihazda kapanır. Cihaz yalnızca kendi anahtarını taşır; kasiyer sahibin yetkilerine erişemez.
+  Kaldırılan cihazın anahtarı anında geçersiz olur.
+- **Personel:** Kasa ve mutfakta 4 haneli PIN ile oturum açar. PIN, 5 hatada kilit ve oturum sunucuda denetlenir.
+
+Sunucu (`sunucu/001_tetra_temel.sql`): Tetra tabloları `private` şemadadır, API'den doğrudan erişilemez; her şey
+yetki denetimli işlevlerden geçer. Sipariş tutarını, sıra numarasını ve tükendi denetimini sunucu yapar;
+tarayıcıdan gelen fiyata güvenilmez. Aynı sipariş isteği iki kez gelirse tek sipariş oluşur.
+Kasadan verilen "tükendi" işareti ürünün NearMenu kaydını günceller.
 
 Hazır bildirimi (planlanan): müşteri QR'ı okutur ve bildirime izin verir; personel "Hazır"a basınca sunucu
 tarayıcı bildirimi gönderir. iPhone normal sayfalara bildirim izni vermediği için orada takip sayfası
-açıkken sesli ve ekranda uyarı verilir.
+açıkken sesli ve ekranda uyarı verilir. Takip sayfası sürekli bağlantı tutmaz; 15 saniyede bir durumu sorar.
 
 ## Yayın
 
@@ -55,20 +65,14 @@ açıkken sesli ve ekranda uyarı verilir.
 
 ## Testler
 
-`testler/` klasöründeki iki betik yayındaki siteyi gerçek tarayıcıyla sınar (Playwright gerekir):
+Testler deneme işletmesinde (`tetra-test`) koşar; hesabın bilgileri ortam değişkeniyle verilir, repoda yer almaz.
 
-- `node testler/e2e.cjs` → işletme sahibi, kasiyer, müşteri ve güvenlik senaryoları (75 kontrol).
-- `node testler/tarama.cjs` → 320–1366 px arası 6 genişlikte taşma, dokunma alanı, erişilebilirlik ve hız taraması.
-- Başka adresi sınamak için: `U=http://localhost:4173 node testler/e2e.cjs`
+```bash
+TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/api.mjs    # sunucu işlevleri: 65 kontrol
+TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/e2e.cjs    # gerçek tarayıcıyla uçtan uca: 56 kontrol
+```
 
-## Güvenlik notları
-
-- Önizlemede giriş, PIN ve kilitler tarayıcıda denetlenir; tarayıcı kayıtlarına erişebilen biri aşabilir.
-  Gerçek koruma sunucu bağlandığında gelir: kimlik doğrulama, PIN denetimi, deneme sınırı ve sipariş
-  tutarının hesabı sunucuda yapılacak.
-- Cihaz kasa / mutfak / TV ekranına geçtiğinde Ekran seçimi ve Yönetim kilitlenir; yönetici şifresi sorulur.
-- Sepetteki fiyat menüden okunur; sepette saklanan fiyata güvenilmez.
-- Yayın başlıkları: CSP (yalnızca kendi kodu ve NearMenu sunucusu), HSTS, nosniff, frame-ancestors none, noindex.
+`e2e.cjs` Playwright ister; başka adresi sınamak için başına `U=http://localhost:4173` eklenir.
 
 ## Tema
 
