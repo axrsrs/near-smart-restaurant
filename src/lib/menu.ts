@@ -1,12 +1,14 @@
 /* Ürünler, fiyatlar ve fotoğraflar NearMenu'den canlı okunur (tek ürün listesi).
-   Son başarılı menü cihazda saklanır: bağlantı koptuğunda kasa son bilinen menüyle çalışmaya devam eder. */
+   Son başarılı menü cihazda saklanır: bağlantı koptuğunda kasa son bilinen menüyle çalışmaya devam eder.
+   Trafik: iki dakikada bir yalnızca menünün sürüm damgası sorulur (birkaç bayt); menünün tamamı ancak
+   damga değiştiğinde yeniden indirilir. */
 import { useEffect, useSyncExternalStore } from 'react'
 import { oku, yaz } from './depo'
 import { rpc } from './sunucu'
 
 export type MenuUrun = { id: string; ad: string; aciklama: string; fiyat: number; gorsel: string; tukendi: boolean }
 export type MenuKategori = { id: string; ad: string; urunler: MenuUrun[] }
-export type Menu = { slug: string; isletme: { id: string; ad: string; logo: string }; kategoriler: MenuKategori[]; alindi: number }
+export type Menu = { slug: string; surum: string; isletme: { id: string; ad: string; logo: string }; kategoriler: MenuKategori[]; alindi: number }
 export type MenuDurumu = { slug: string; menu: Menu | null; yukleniyor: boolean; hata: string }
 
 type HamUrun = { id?: unknown; name?: unknown; description?: unknown; price?: unknown; image?: unknown; sold?: unknown }
@@ -17,7 +19,7 @@ const YENILEME_ARALIGI = 120_000
 const yazi = (v: unknown, enCok: number) => (typeof v === 'string' ? v.trim().slice(0, enCok) : '')
 const guvenliGorsel = (v: unknown) => (typeof v === 'string' && /^https:\/\//.test(v) ? v : '')
 
-function cevir(slug: string, ham: HamMenu): Menu | null {
+function cevir(slug: string, surum: string, ham: HamMenu): Menu | null {
   if (!ham || !ham.restaurant || !Array.isArray(ham.categories)) return null
   const kategoriler: MenuKategori[] = []
   for (const k of ham.categories as HamKategori[]) {
@@ -32,6 +34,7 @@ function cevir(slug: string, ham: HamMenu): Menu | null {
   }
   return {
     slug,
+    surum,
     isletme: { id: yazi(ham.restaurant.id, 64), ad: yazi(ham.restaurant.name, 120), logo: guvenliGorsel(ham.restaurant.logo) },
     kategoriler,
     alindi: Date.now(),
@@ -52,7 +55,16 @@ export async function menuYukle(slug: string, zorla = false): Promise<void> {
   if (!zorla && durum.menu && Date.now() - durum.menu.alindi < YENILEME_ARALIGI) return
   ayarla({ ...durum, yukleniyor: true })
   try {
-    const menu = cevir(slug, await rpc<HamMenu>('get_menu', { p_slug: slug }))
+    const surumHam = await rpc<unknown>('menu_version', { p_slug: slug })
+    const surum = typeof surumHam === 'string' ? surumHam.slice(0, 200) : ''
+    if (durum.slug !== slug) return
+    if (surum && durum.menu && durum.menu.surum === surum) {
+      /* menü değişmemiş: yalnızca son denetim zamanı güncellenir, tamamı yeniden indirilmez */
+      const ayni = { ...durum.menu, alindi: Date.now() }
+      yaz('local', `sr-menu:${slug}`, ayni)
+      return ayarla({ slug, menu: ayni, yukleniyor: false, hata: '' })
+    }
+    const menu = cevir(slug, surum, await rpc<HamMenu>('get_menu', { p_slug: slug }))
     if (durum.slug !== slug) return
     if (!menu) return ayarla({ ...durum, yukleniyor: false, hata: 'Bu adreste yayında bir NearMenu işletmesi bulunamadı.' })
     yaz('local', `sr-menu:${slug}`, menu)
