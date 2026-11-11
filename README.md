@@ -35,7 +35,8 @@ NEAR tek platformdur; işletmeye iki paketten biri açılır:
 | `/yonetim/cihazlar` | Yönetici | Tanıtılmış cihazlar, kaldırma |
 | `/yonetim/isletme` | Yönetici | İşletme ve NearMenu bağlantısı |
 | `/kasa` | Kasa cihazı | PIN, ürünler, sepet, not, Burada/Paket, Nakit/Kart, sıra numarası, fiş, QR |
-| `/mutfak`, `/tv` | Cihaz | Bir sonraki adımda kurulacak |
+| `/mutfak` | Mutfak cihazı | PIN, gelen siparişler (canlı), Hazır / Teslim edildi / Geri al, yeni siparişte ses |
+| `/tv` | TV cihazı | Hazırlanan ve hazır numaralar (canlı), hazır olunca ses, tam ekran |
 | `/t/<kod>` | Müşteri | QR ile açılan sipariş takip sayfası |
 
 ## Kimlik ve yetki
@@ -52,6 +53,10 @@ Sunucu (`sunucu/001_tetra_temel.sql`): Tetra tabloları `private` şemadadır, A
 yetki denetimli işlevlerden geçer. Sipariş tutarını, sıra numarasını ve tükendi denetimini sunucu yapar;
 tarayıcıdan gelen fiyata güvenilmez. Aynı sipariş isteği iki kez gelirse tek sipariş oluşur.
 Kasadan verilen "tükendi" işareti ürünün NearMenu kaydını günceller.
+
+Canlı güncelleme (`src/lib/canli.ts`): sunucu, işletmenin gizli kanalına yalnızca "şu değişti" haberi yollar;
+haberde veri yoktur. Haberi alan ekran güncel listeyi kendi cihaz anahtarıyla sunucudan okur. Bağlantı koparsa
+ekranlar 15 saniyede bir sormaya devam eder.
 
 Hazır bildirimi (planlanan): müşteri QR'ı okutur ve bildirime izin verir; personel "Hazır"a basınca sunucu
 tarayıcı bildirimi gönderir. iPhone normal sayfalara bildirim izni vermediği için orada takip sayfası
@@ -70,9 +75,10 @@ Testler deneme işletmesinde (`tetra-test`) koşar; hesabın bilgileri ortam de�
 ```bash
 TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/api.mjs    # sunucu işlevleri: 65 kontrol
 TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/e2e.cjs    # gerçek tarayıcıyla uçtan uca: 56 kontrol
+TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/canli.cjs  # kasa → mutfak → TV → müşteri, dört cihazla: 24 kontrol
 ```
 
-`e2e.cjs` Playwright ister; başka adresi sınamak için başına `U=http://localhost:4173` eklenir.
+Tarayıcı testleri Playwright ister; başka adresi sınamak için başına `U=http://localhost:4173` eklenir.
 
 ## Tema
 

@@ -19,6 +19,7 @@
   --color-warn: #b45309;
   --color-danger: #c2410c;
   --color-on-danger: #ffffff; /* tehlike düğmesi üstündeki yazı */
+  --color-on-ok: #ffffff;     /* "Hazır" düğmesi üstündeki yazı */
   --color-glass: rgb(250 249 246 / 0.9);
 }
 
@@ -37,6 +38,7 @@
   --color-warn: #e39a4a;
   --color-danger: #f0764a;
   --color-on-danger: #1c0a03;
+  --color-on-ok: #04140c;
   --color-glass: rgb(12 12 11 / 0.86);
   color-scheme: dark;
 }
@@ -97,6 +99,13 @@
   .isinlar { display: none; }
   .giris-kart { transition: none; }
 }
+
+/* ── TV ve mutfak: yeni gelen numara / sipariş bir süre dikkat çeker ── */
+.yeni-hazir { animation: yeniHazir 1.1s ease-in-out 6; }
+@keyframes yeniHazir { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.yeni-siparis { animation: yeniSiparis 1.2s ease-in-out 3; }
+@keyframes yeniSiparis { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 4px var(--color-gold); } }
+@media (prefers-reduced-motion: reduce) { .yeni-hazir, .yeni-siparis { animation: none; } }
 
 /* ── fiş: ekranda gizli, yazdırırken yalnızca fiş basılır (80 mm termal) ── */
 .fis-kagit { display: none; }

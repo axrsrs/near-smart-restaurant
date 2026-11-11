@@ -34,6 +34,10 @@ const YOL: Record<string, ReactNode> = {
   not: (<><path d="M4 5h16v10H9l-5 4Z" /></>),
   yenile: (<><path d="M20 11a8 8 0 1 0-2.3 6.3" /><path d="M20 5v6h-6" /></>),
   dis: (<><path d="M14 4h6v6M20 4l-9 9" /><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" /></>),
+  ses: (<><path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" /></>),
+  sessiz: (<><path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="m17 9 5 6M22 9l-5 6" /></>),
+  tamekran: <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />,
+  tik: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   tablet: (<><rect x="5" y="2.5" width="14" height="19" rx="2" /><path d="M11 18h2" /></>),
   yonetim: (<><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></>),
 }

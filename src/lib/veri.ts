@@ -130,6 +130,13 @@ export async function tukendiAyarla(slug: string, urunId: string, tukendi: boole
   return s
 }
 
+/* ───────── TV ekranı: yalnızca numara ve durum (personel oturumu gerekmez) ───────── */
+export type TvSiparis = { no: number; durum: 'hazirlaniyor' | 'hazir'; hazirZaman: number | null }
+export async function tvListesi(): Promise<TvSiparis[]> {
+  const y = await cihazCagir<{ siparisler: { no: number; durum: 'hazirlaniyor' | 'hazir'; hazir_zaman: string | null }[] }>('tetra_siparisler', {}, false)
+  return y.siparisler.map((s) => ({ no: s.no, durum: s.durum, hazirZaman: s.hazir_zaman ? Date.parse(s.hazir_zaman) : null }))
+}
+
 /* ───────── müşteri: sipariş takibi (takip koduyla, girişsiz) ───────── */
 export type Takip = { no: number; durum: SiparisDurumu; tur: SiparisTuru; isletme: { ad: string; logo: string } }
 export const takipOku = (kod: string) => cagir<Takip | null>('tetra_takip', { p_kod: kod })

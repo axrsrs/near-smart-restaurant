@@ -2,12 +2,13 @@ import type { ReactNode } from 'react'
 import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { BTN_ANA, BTN_IKINCIL } from './components/bicim'
 import { cihazYenile, EKRAN_ADI, PIN_ISTEYEN, useCihaz, useYonetici, type CihazEkrani, type Isletme } from './lib/oturum'
-import EkranBekliyor from './pages/EkranBekliyor'
 import EkranSecimi from './pages/EkranSecimi'
 import Giris from './pages/Giris'
 import Kasa from './pages/Kasa'
+import Mutfak from './pages/Mutfak'
 import PinGiris from './pages/PinGiris'
 import Takip from './pages/Takip'
+import Tv from './pages/Tv'
 import Yonetim from './pages/Yonetim'
 import Cihazlar from './pages/yonetim/Cihazlar'
 import Isletme_ from './pages/yonetim/Isletme'
@@ -27,7 +28,7 @@ function YoneticiSart({ children }: { children: ReactNode }) {
 }
 
 /** Cihaz ekranları: tanıtılmış cihaz ister; kasa ve mutfakta personel PIN'i girilmeden içerik açılmaz. */
-function CihazSart({ ekran, children }: { ekran: CihazEkrani; children: (b: { isletme: Isletme; personel: { id: string; ad: string } | null }) => ReactNode }) {
+function CihazSart({ ekran, children }: { ekran: CihazEkrani; children: (b: { isletme: Isletme; kanal: string; personel: { id: string; ad: string } | null }) => ReactNode }) {
   const c = useCihaz()
   const git = useNavigate()
   if (c.durum === 'yok') return <Navigate to="/" replace />
@@ -47,7 +48,7 @@ function CihazSart({ ekran, children }: { ekran: CihazEkrani; children: (b: { is
       </div>
     )
   if (PIN_ISTEYEN.includes(ekran) && !c.personel) return <PinGiris ekran={ekran} isletme={c.isletme} personelTanimli={c.personelTanimli} />
-  return children({ isletme: c.isletme, personel: c.personel })
+  return children({ isletme: c.isletme, kanal: c.kanal, personel: c.personel })
 }
 
 /** Açılış: tanıtılmış cihaz kendi ekranına, giriş yapmış yönetici ekran seçimine, diğerleri girişe gider. */
@@ -75,9 +76,9 @@ export default function App() {
           <Route path="cihazlar" element={<Cihazlar />} />
           <Route path="isletme" element={<Isletme_ />} />
         </Route>
-        <Route path="/kasa" element={<CihazSart ekran="kasa">{(b) => (b.personel ? <Kasa isletme={b.isletme} personel={b.personel} /> : null)}</CihazSart>} />
-        <Route path="/mutfak" element={<CihazSart ekran="mutfak">{(b) => <EkranBekliyor ekran="mutfak" isletme={b.isletme} personel={b.personel} />}</CihazSart>} />
-        <Route path="/tv" element={<CihazSart ekran="tv">{(b) => <EkranBekliyor ekran="tv" isletme={b.isletme} personel={null} />}</CihazSart>} />
+        <Route path="/kasa" element={<CihazSart ekran="kasa">{(b) => (b.personel ? <Kasa isletme={b.isletme} personel={b.personel} kanal={b.kanal} /> : null)}</CihazSart>} />
+        <Route path="/mutfak" element={<CihazSart ekran="mutfak">{(b) => (b.personel ? <Mutfak isletme={b.isletme} personel={b.personel} kanal={b.kanal} /> : null)}</CihazSart>} />
+        <Route path="/tv" element={<CihazSart ekran="tv">{(b) => <Tv isletme={b.isletme} kanal={b.kanal} />}</CihazSart>} />
         <Route path="/t/:kod" element={<Takip />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

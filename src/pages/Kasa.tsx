@@ -6,6 +6,7 @@ import Ikon from '../components/Ikon'
 import Pencere from '../components/Pencere'
 import QrKod from '../components/QrKod'
 import TemaDugmesi from '../components/TemaDugmesi'
+import { useCanli, useTazele } from '../lib/canli'
 import { oku, yaz } from '../lib/depo'
 import { ODEME_ADI, takipAdresi, TUR_ADI } from '../lib/etiketler'
 import { menuYukle, useMenu, type MenuUrun } from '../lib/menu'
@@ -29,13 +30,12 @@ type Acik = null | { t: 'sepet' } | { t: 'not'; anahtar: string } | { t: 'odeme'
 
 const HAZIR_NOTLAR = ['Soğansız', 'Acısız', 'Az pişmiş', 'İyi pişmiş', 'Sossuz', 'Buzsuz', 'Şekersiz', 'Yanında peçete']
 const A_SEPET = 'tetra-sepet'
-const LISTE_ARALIGI = 60_000
 const istekKimligi = () => (crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => (Number(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(c) / 4)))).toString(16)))
 const kucuk = (s: string) => s.toLocaleLowerCase('tr')
 const anahtar = (urunId: string, not: string) => `${urunId}|${kucuk(not)}`
 const saat = (z: number) => new Date(z).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
 
-export default function Kasa({ isletme, personel }: { isletme: Isletme; personel: { id: string; ad: string } }) {
+export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; personel: { id: string; ad: string }; kanal: string }) {
   const { slug, ad: isletmeAd, logo } = isletme
   const { menu, yukleniyor, hata: menuHata } = useMenu(slug)
   const siparisler = useSiparisler()
@@ -52,19 +52,12 @@ export default function Kasa({ isletme, personel }: { isletme: Isletme; personel
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const tamamlaniyor = useRef(false)
 
-  /* bugünün siparişleri: açılışta, ekrana dönüldüğünde ve dakikada bir sunucudan okunur */
-  useEffect(() => {
-    const oku_ = () => {
-      if (!document.hidden) void siparisleriYukle()
-    }
-    oku_()
-    const sayac = setInterval(oku_, LISTE_ARALIGI)
-    document.addEventListener('visibilitychange', oku_)
-    return () => {
-      clearInterval(sayac)
-      document.removeEventListener('visibilitychange', oku_)
-    }
-  }, [])
+  /* bugünün siparişleri ve menü: mutfak "hazır" dediğinde ya da menü değiştiğinde anında, ayrıca düzenli aralıkla tazelenir */
+  const bagli = useCanli(kanal, (konu) => {
+    if (konu === 'siparis') void siparisleriYukle()
+    else if (konu === 'menu') void menuYukle(slug, true)
+  })
+  useTazele(() => void siparisleriYukle(), bagli, 30_000)
 
   useEffect(() => {
     yaz('session', A_SEPET, sepet.length ? sepet : null)
@@ -502,6 +495,11 @@ function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdi
               <button type="button" onClick={() => yazdir(s)} aria-label={`${s.no} numaralı siparişin fişini yazdır`} title="Fiş yazdır" className={IKON_BTN}>
                 <Ikon ad="yazici" className="size-[18px]" />
               </button>
+              {s.durum === 'hazir' && (
+                <button type="button" onClick={async () => { const y = await siparisDurumu(s.id, 'teslim'); setHata(y.tamam ? '' : y.hata) }} aria-label={`${s.no} numaralı sipariş teslim edildi`} title="Teslim edildi" className={`${IKON_BTN} text-ok`}>
+                  <Ikon ad="tik" className="size-[18px]" />
+                </button>
+              )}
               {(s.durum === 'hazirlaniyor' || s.durum === 'hazir') && (
                 <button type="button" onClick={() => setIptalSor(iptalSor === s.id ? null : s.id)} aria-label={`${s.no} numaralı siparişi iptal et`} title="İptal et" className={`${IKON_BTN} text-danger`}>
                   <Ikon ad="kapat" className="size-[18px]" />
