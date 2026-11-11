@@ -22,7 +22,7 @@ NEAR tek platformdur; işletmeye iki paketten biri açılır:
 - Tek veritabanı (NearMenu'nün Supabase projesi), tek işletme kaydı, tek giriş.
 - Tek ürün listesi: ürün, fiyat ve fotoğraf NearMenu'de girilir; kasa aynı kaydı okur (`src/lib/menu.ts`).
   Kasadan yalnızca "tükendi" işaretlenir.
-- Paketi yalnızca süper panelden NEAR açar ve kapatır.
+- Paketi yalnızca NEAR açar ve kapatır: NearMenu süper panelinde işletmeyi düzenlerken "Tetra" alanından.
 - Sisteme özel veriler (personel ve PIN, siparişler) ayrı tablolarda durur; NearMenu tabloları değişmez.
 
 ## Ekranlar
@@ -35,7 +35,6 @@ NEAR tek platformdur; işletmeye iki paketten biri açılır:
 | `/yonetim/cihazlar` | Yönetici | Tanıtılmış cihazlar, kaldırma |
 | `/yonetim/raporlar` | Yönetici | Ciro, nakit/kart, günlük döküm, en çok satanlar |
 | `/yonetim/isletme` | Yönetici | İşletme ve NearMenu bağlantısı |
-| `/paketler` | Süper yönetici | İşletmelere Tetra paketini aç / kapat |
 | `/kasa` | Kasa cihazı | PIN, ürünler, sepet, not, Burada/Paket, Nakit/Kart, sıra numarası, fiş, QR |
 | `/mutfak` | Mutfak cihazı | PIN, gelen siparişler (canlı), Hazır / Teslim edildi / Geri al, yeni siparişte ses |
 | `/tv` | TV cihazı | Hazırlanan ve hazır numaralar (canlı), hazır olunca ses, tam ekran |

@@ -147,9 +147,6 @@ export type RaporGunu = { gun: string; siparis: number; iptal: number; ciro: num
 export type Rapor = { ozet: Omit<RaporGunu, 'gun'>; gunler: RaporGunu[]; urunler: { ad: string; adet: number; ciro: number }[] }
 export const raporOku = (isletme: string, bas: string, bit: string) => cagir<Rapor>('tetra_rapor', { p_restaurant: isletme, p_bas: bas, p_bit: bit })
 
-/* ───────── paket yönetimi (yalnızca süper yönetici) ───────── */
-export const paketAyarla = (isletme: string, aktif: boolean) => dene(() => cagir<Yanit>('tetra_admin_ayarla', { p_restaurant: isletme, p_aktif: aktif }))
-
 /* ───────── cihaza özel ayar ───────── */
 const A_FIS = 'tetra-otomatik-fis'
 let otomatikFis = oku<boolean>('local', A_FIS) !== false

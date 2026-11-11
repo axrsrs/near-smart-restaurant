@@ -108,11 +108,6 @@ export async function girisYap(eposta: string, sifre: string): Promise<Sonuc> {
   return { tamam: true }
 }
 
-/** İşletme listesini ve paket durumlarını sunucudan yeniden okur. */
-export async function yoneticiYenile() {
-  if (yonetici.durum === 'var') await yoneticiYukle(yonetici.eposta)
-}
-
 export async function cikis() {
   try {
     await sunucu.auth.signOut({ scope: 'local' })

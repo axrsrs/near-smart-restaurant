@@ -6,7 +6,6 @@ import EkranSecimi from './pages/EkranSecimi'
 import Giris from './pages/Giris'
 import Kasa from './pages/Kasa'
 import Mutfak from './pages/Mutfak'
-import Paketler from './pages/Paketler'
 import PinGiris from './pages/PinGiris'
 import Takip from './pages/Takip'
 import Tv from './pages/Tv'
@@ -79,7 +78,6 @@ export default function App() {
           <Route path="raporlar" element={<Raporlar />} />
           <Route path="isletme" element={<Isletme_ />} />
         </Route>
-        <Route path="/paketler" element={<YoneticiSart><Paketler /></YoneticiSart>} />
         <Route path="/kasa" element={<CihazSart ekran="kasa">{(b) => (b.personel ? <Kasa isletme={b.isletme} personel={b.personel} kanal={b.kanal} /> : null)}</CihazSart>} />
         <Route path="/mutfak" element={<CihazSart ekran="mutfak">{(b) => (b.personel ? <Mutfak isletme={b.isletme} personel={b.personel} kanal={b.kanal} /> : null)}</CihazSart>} />
         <Route path="/tv" element={<CihazSart ekran="tv">{(b) => <Tv isletme={b.isletme} kanal={b.kanal} />}</CihazSart>} />
