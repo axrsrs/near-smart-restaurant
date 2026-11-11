@@ -17,7 +17,7 @@ self.addEventListener('push', (e) => {
       tag: typeof v.kod === 'string' ? 'tetra-' + v.kod : 'tetra',
       renotify: true,
       requireInteraction: true,
-      vibrate: [300, 150, 300, 150, 600],
+      vibrate: [500, 150, 500, 150, 500, 150, 900],
       icon: '/favicon.svg',
       data: { kod: typeof v.kod === 'string' && /^[0-9a-f]{32}$/.test(v.kod) ? v.kod : '' },
     }),

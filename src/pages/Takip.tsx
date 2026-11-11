@@ -4,7 +4,7 @@ import Ikon from '../components/Ikon'
 import TemaDugmesi from '../components/TemaDugmesi'
 import { bildirimAc, bildirimDestegi } from '../lib/bildirim'
 import { useCanli } from '../lib/canli'
-import { cal } from '../lib/ses'
+import { cal, sesHazirla } from '../lib/ses'
 import { takipOku, type SiparisDurumu, type Takip as TakipVerisi } from '../lib/veri'
 
 const ADIMLAR: { durum: SiparisDurumu; ad: string }[] = [
@@ -58,18 +58,14 @@ export default function Takip() {
   useEffect(() => {
     const d = veri?.durum ?? null
     if (d === 'hazir' && onceki.current === 'hazirlaniyor') {
-      cal('hazir')
-      try {
-        navigator.vibrate?.([300, 150, 300, 150, 600])
-      } catch {
-        /* titreşim desteklenmiyor */
-      }
+      cal('hazirMusteri') // ses + titreşim
     }
     onceki.current = d
   }, [veri?.durum])
 
   const haberVer = async () => {
     setHaber('bekliyor')
+    sesHazirla('hazirMusteri')
     /* dokunuş sesi açar (lib/ses); bildirim izni ayrıca sorulur */
     const s = await bildirimAc(kod)
     setHaber(s.tamam ? 'bildirim' : 'ses')

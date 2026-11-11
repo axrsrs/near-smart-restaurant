@@ -12,6 +12,7 @@ const TUR = {
   '.png': 'image/png',
   '.webp': 'image/webp',
   '.woff2': 'font/woff2',
+  '.mp3': 'audio/mpeg',
   '.json': 'application/json',
   '.webmanifest': 'application/manifest+json',
 }
@@ -35,7 +36,7 @@ for (const yol of await tara(KAYNAK)) {
 
 const kod = `const DOSYA = ${JSON.stringify(dosyalar)};
 const BASLIK = {
-  "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self' https://rfwgjzkewtjpdcvrhepg.supabase.co wss://rfwgjzkewtjpdcvrhepg.supabase.co; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+  "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self'; img-src 'self' data: https:; connect-src 'self' https://rfwgjzkewtjpdcvrhepg.supabase.co wss://rfwgjzkewtjpdcvrhepg.supabase.co; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-Robots-Tag": "noindex, nofollow",

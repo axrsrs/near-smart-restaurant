@@ -30,32 +30,67 @@ if (typeof window !== 'undefined') {
   window.addEventListener('keydown', ac, { passive: true })
 }
 
-function ton(c: Ctx, frekans: number, basla: number, sure: number, guc = 0.2) {
-  const o = c.createOscillator()
-  const g = c.createGain()
-  o.type = 'sine'
-  o.frequency.value = frekans
-  g.gain.setValueAtTime(0.0001, basla)
-  g.gain.exponentialRampToValueAtTime(guc, basla + 0.02)
-  g.gain.exponentialRampToValueAtTime(0.0001, basla + sure)
-  o.connect(g).connect(c.destination)
-  o.start(basla)
-  o.stop(basla + sure + 0.02)
+export type Ses = 'yeni' | 'hazirTv' | 'hazirMusteri'
+const DOSYA: Record<Ses, string> = {
+  yeni: '/sesler/yeni-siparis.mp3', // mutfak: kapı zili
+  hazirTv: '/sesler/hazir-tv.mp3', // TV: anons
+  hazirMusteri: '/sesler/hazir-musteri.mp3', // müşteri telefonu: melodi
+}
+const TITRESIM: Record<Ses, number[]> = {
+  yeni: [250, 120, 250],
+  hazirTv: [],
+  hazirMusteri: [500, 150, 500, 150, 500, 150, 900],
+}
+const tamponlar = new Map<Ses, AudioBuffer>()
+const yuklenen = new Set<Ses>()
+
+/** Ses dosyasını önceden indirir ki çalma anında gecikme olmasın. Ekran açılırken çağrılır. */
+export function sesHazirla(tur: Ses) {
+  if (yuklenen.has(tur)) return
+  const c = baglam()
+  if (!c) return
+  yuklenen.add(tur)
+  fetch(DOSYA[tur])
+    .then((y) => (y.ok ? y.arrayBuffer() : Promise.reject(new Error('ses'))))
+    .then((veri) => c.decodeAudioData(veri))
+    .then((tampon) => void tamponlar.set(tur, tampon))
+    .catch(() => void yuklenen.delete(tur)) // indirilemezse yedek ton çalar; sonraki denemede yeniden indirilir
 }
 
-/** yeni: mutfağa yeni sipariş düştü · hazir: sipariş hazır (TV) */
-export function cal(tur: 'yeni' | 'hazir') {
+/* ses dosyası yüklenemediyse çalan yedek uyarı */
+function yedekTon(c: Ctx) {
+  const t = c.currentTime
+  for (const [i, f] of [660, 880, 1320, 880, 1320].entries()) {
+    const o = c.createOscillator()
+    const g = c.createGain()
+    o.frequency.value = f
+    g.gain.setValueAtTime(0.0001, t + i * 0.25)
+    g.gain.exponentialRampToValueAtTime(0.6, t + i * 0.25 + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.25 + 0.5)
+    o.connect(g).connect(c.destination)
+    o.start(t + i * 0.25)
+    o.stop(t + i * 0.25 + 0.55)
+  }
+}
+
+/** Uyarıyı çalar ve (destekleyen cihazda) titretir. iPhone web sayfalarına titreşim izni vermez. */
+export function cal(tur: Ses) {
+  try {
+    if (TITRESIM[tur].length) navigator.vibrate?.(TITRESIM[tur])
+  } catch {
+    /* titreşim desteklenmiyor */
+  }
   const c = baglam()
   if (!c || c.state !== 'running') return
-  const t = c.currentTime
-  if (tur === 'yeni') {
-    ton(c, 880, t, 0.16)
-    ton(c, 880, t + 0.22, 0.16)
-  } else {
-    ton(c, 660, t, 0.35, 0.25)
-    ton(c, 880, t + 0.18, 0.35, 0.25)
-    ton(c, 1320, t + 0.36, 0.6, 0.25)
+  const tampon = tamponlar.get(tur)
+  if (!tampon) {
+    sesHazirla(tur)
+    return yedekTon(c)
   }
+  const kaynak = c.createBufferSource()
+  kaynak.buffer = tampon
+  kaynak.connect(c.destination)
+  kaynak.start()
 }
 
 const abone = (f: () => void) => {

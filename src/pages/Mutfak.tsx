@@ -6,7 +6,7 @@ import TemaDugmesi from '../components/TemaDugmesi'
 import { useCanli, useTazele } from '../lib/canli'
 import { TUR_ADI } from '../lib/etiketler'
 import { kilitle, type Isletme } from '../lib/oturum'
-import { cal, useSesAcik } from '../lib/ses'
+import { cal, sesHazirla, useSesAcik } from '../lib/ses'
 import { siparisDurumu, siparisleriYukle, useSiparisler, type Siparis, type SiparisDurumu } from '../lib/veri'
 
 const dakika = (z: number, simdi: number) => Math.max(0, Math.floor((simdi - z) / 60_000))
@@ -25,6 +25,8 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
   const yukle = () => void siparisleriYukle().then((s) => setHata(s.tamam ? '' : s.hata))
   const bagli = useCanli(kanal, (konu) => konu === 'siparis' && yukle())
   useTazele(yukle, bagli)
+
+  useEffect(() => sesHazirla('yeni'), [])
 
   useEffect(() => {
     const sayac = setInterval(() => setSimdi(Date.now()), 20_000)

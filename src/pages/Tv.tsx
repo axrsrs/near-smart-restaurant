@@ -4,7 +4,7 @@ import Ikon from '../components/Ikon'
 import TemaDugmesi from '../components/TemaDugmesi'
 import { useCanli, useTazele } from '../lib/canli'
 import type { Isletme } from '../lib/oturum'
-import { cal, useSesAcik } from '../lib/ses'
+import { cal, sesHazirla, useSesAcik } from '../lib/ses'
 import { hataMetni } from '../lib/sunucu'
 import { tvListesi, type TvSiparis } from '../lib/veri'
 
@@ -30,6 +30,8 @@ export default function Tv({ isletme, kanal }: { isletme: Isletme; kanal: string
     )
   const bagli = useCanli(kanal, (konu) => konu === 'siparis' && yukle())
   useTazele(yukle, bagli)
+
+  useEffect(() => sesHazirla('hazirTv'), [])
 
   useEffect(() => {
     const sayac = setInterval(() => setSimdi(Date.now()), 5000)
@@ -62,7 +64,7 @@ export default function Tv({ isletme, kanal }: { isletme: Isletme; kanal: string
   useEffect(() => {
     if (!liste) return
     const nolar = new Set(hazir.map((s) => s.no))
-    if (bilinen.current && [...nolar].some((n) => !bilinen.current!.has(n))) cal('hazir')
+    if (bilinen.current && [...nolar].some((n) => !bilinen.current!.has(n))) cal('hazirTv')
     bilinen.current = nolar
   }, [liste, hazir])
 
