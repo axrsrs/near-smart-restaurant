@@ -6,6 +6,7 @@ import EkranSecimi from './pages/EkranSecimi'
 import Giris from './pages/Giris'
 import Kasa from './pages/Kasa'
 import Mutfak from './pages/Mutfak'
+import Paketler from './pages/Paketler'
 import PinGiris from './pages/PinGiris'
 import Takip from './pages/Takip'
 import Tv from './pages/Tv'
@@ -13,6 +14,7 @@ import Yonetim from './pages/Yonetim'
 import Cihazlar from './pages/yonetim/Cihazlar'
 import Isletme_ from './pages/yonetim/Isletme'
 import Personel from './pages/yonetim/Personel'
+import Raporlar from './pages/yonetim/Raporlar'
 
 const Bekle = () => (
   <div className="grid min-h-dvh place-items-center bg-ink" role="status" aria-label="Yükleniyor">
@@ -74,8 +76,10 @@ export default function App() {
           <Route index element={<Navigate to="personel" replace />} />
           <Route path="personel" element={<Personel />} />
           <Route path="cihazlar" element={<Cihazlar />} />
+          <Route path="raporlar" element={<Raporlar />} />
           <Route path="isletme" element={<Isletme_ />} />
         </Route>
+        <Route path="/paketler" element={<YoneticiSart><Paketler /></YoneticiSart>} />
         <Route path="/kasa" element={<CihazSart ekran="kasa">{(b) => (b.personel ? <Kasa isletme={b.isletme} personel={b.personel} kanal={b.kanal} /> : null)}</CihazSart>} />
         <Route path="/mutfak" element={<CihazSart ekran="mutfak">{(b) => (b.personel ? <Mutfak isletme={b.isletme} personel={b.personel} kanal={b.kanal} /> : null)}</CihazSart>} />
         <Route path="/tv" element={<CihazSart ekran="tv">{(b) => <Tv isletme={b.isletme} kanal={b.kanal} />}</CihazSart>} />

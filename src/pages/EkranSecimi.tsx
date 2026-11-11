@@ -10,7 +10,7 @@ const ACIKLAMA: Record<Ekran, string> = {
   kasa: 'Bu cihazı kasa yap: sipariş al, fiş yazdır',
   mutfak: 'Bu cihazı mutfak ekranı yap: siparişleri hazırla',
   tv: 'Bu cihazı TV ekranı yap: hazır numaraları göster',
-  yonetim: 'Personel, PIN kodları, cihazlar',
+  yonetim: 'Personel, PIN kodları, cihazlar, raporlar',
 }
 
 export default function EkranSecimi() {
@@ -23,6 +23,19 @@ export default function EkranSecimi() {
   if (y.durum !== 'var') return null
 
   const tetraAcik = y.isletmeler.filter((i) => i.tetra)
+  const superMi = y.isletmeler.some((i) => i.rol === 'super')
+  const paketKarti = superMi && (
+    <button type="button" onClick={() => git('/paketler')} className="group mt-3 flex min-h-20 w-full items-center gap-4 rounded-2xl border border-line bg-ink-2 p-4 text-left transition hover:border-gold sm:max-w-md">
+      <span className="grid size-12 flex-none place-items-center rounded-xl bg-soft text-gold">
+        <Ikon ad="paket" className="size-6" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-semibold">Paketler</span>
+        <span className="block text-[13px] text-muted">Süper yönetici: işletmelere Tetra paketini aç ya da kapat</span>
+      </span>
+      <Ikon ad="ileri" className="size-4 flex-none text-text/40 transition-transform group-hover:translate-x-0.5" />
+    </button>
+  )
   const ic = (govde: React.ReactNode) => (
     <div className="min-h-dvh bg-ink">
       <UstBar />
@@ -51,6 +64,7 @@ export default function EkranSecimi() {
             ? 'İşletmen NearMenu paketinde. Kasa, mutfak ve TV ekranlarını kullanmak için paketine Tetra eklenmesi gerekiyor; NEAR ile iletişime geç.'
             : 'Bu hesaba bağlı bir işletme bulunamadı. Doğru hesapla giriş yaptığından emin ol.'}
         </p>
+        {paketKarti}
       </div>,
     )
 
@@ -71,6 +85,7 @@ export default function EkranSecimi() {
             </button>
           ))}
         </div>
+        {paketKarti}
       </>,
     )
 
@@ -132,6 +147,8 @@ export default function EkranSecimi() {
           </button>
         ))}
       </div>
+
+      {paketKarti}
 
       {tanit && <TanitPenceresi ekran={tanit} kapat={() => setTanit(null)} tanit={(ad) => cihazTanit(secili, tanit, ad)} bitti={() => git(`/${tanit}`, { replace: true })} />}
     </>,

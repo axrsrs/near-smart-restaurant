@@ -38,6 +38,9 @@ const YOL: Record<string, ReactNode> = {
   sessiz: (<><path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="m17 9 5 6M22 9l-5 6" /></>),
   tamekran: <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />,
   tik: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  zil: (<><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7 2.5 7h-17S6 15 6 9Z" /><path d="M10 19.5a2 2 0 0 0 4 0" /></>),
+  grafik: <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" />,
+  paket: (<><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="M4 7.5 12 12l8-4.5M12 12v9" /></>),
   tablet: (<><rect x="5" y="2.5" width="14" height="19" rx="2" /><path d="M11 18h2" /></>),
   yonetim: (<><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></>),
 }

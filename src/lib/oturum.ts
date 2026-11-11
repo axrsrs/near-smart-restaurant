@@ -108,6 +108,11 @@ export async function girisYap(eposta: string, sifre: string): Promise<Sonuc> {
   return { tamam: true }
 }
 
+/** İşletme listesini ve paket durumlarını sunucudan yeniden okur. */
+export async function yoneticiYenile() {
+  if (yonetici.durum === 'var') await yoneticiYukle(yonetici.eposta)
+}
+
 export async function cikis() {
   try {
     await sunucu.auth.signOut({ scope: 'local' })
@@ -242,6 +247,14 @@ export async function kilitle() {
   } catch {
     /* bağlantı yoksa yerel oturum yine de kapanmıştır; sunucudaki oturum süresi dolunca düşer */
   }
+}
+
+/** Sipariş hazır olduğunda müşterinin telefonuna bildirim gönderilmesini ister (sunucu işlevi gönderir). */
+export function bildirimGonder(siparisId: string) {
+  if (!kayit) return
+  void sunucu.functions.invoke('tetra-bildir', { body: { anahtar: kayit.anahtar, siparis: siparisId } }).catch(() => {
+    /* bildirim gönderilemese de sipariş hazır olarak işaretlidir; açık takip sayfaları yine güncellenir */
+  })
 }
 
 export const cihazNotuAl = () => {

@@ -33,7 +33,9 @@ NEAR tek platformdur; işletmeye iki paketten biri açılır:
 | `/ekran` | Yönetici | Bu cihazı Kasa / Mutfak / TV olarak tanıt ya da Yönetim'e geç |
 | `/yonetim/personel` | Yönetici | Personel, ekran yetkileri, PIN |
 | `/yonetim/cihazlar` | Yönetici | Tanıtılmış cihazlar, kaldırma |
+| `/yonetim/raporlar` | Yönetici | Ciro, nakit/kart, günlük döküm, en çok satanlar |
 | `/yonetim/isletme` | Yönetici | İşletme ve NearMenu bağlantısı |
+| `/paketler` | Süper yönetici | İşletmelere Tetra paketini aç / kapat |
 | `/kasa` | Kasa cihazı | PIN, ürünler, sepet, not, Burada/Paket, Nakit/Kart, sıra numarası, fiş, QR |
 | `/mutfak` | Mutfak cihazı | PIN, gelen siparişler (canlı), Hazır / Teslim edildi / Geri al, yeni siparişte ses |
 | `/tv` | TV cihazı | Hazırlanan ve hazır numaralar (canlı), hazır olunca ses, tam ekran |
@@ -58,9 +60,14 @@ Canlı güncelleme (`src/lib/canli.ts`): sunucu, işletmenin gizli kanalına yal
 haberde veri yoktur. Haberi alan ekran güncel listeyi kendi cihaz anahtarıyla sunucudan okur. Bağlantı koparsa
 ekranlar 15 saniyede bir sormaya devam eder.
 
-Hazır bildirimi (planlanan): müşteri QR'ı okutur ve bildirime izin verir; personel "Hazır"a basınca sunucu
-tarayıcı bildirimi gönderir. iPhone normal sayfalara bildirim izni vermediği için orada takip sayfası
-açıkken sesli ve ekranda uyarı verilir. Takip sayfası sürekli bağlantı tutmaz; 15 saniyede bir durumu sorar.
+Hazır bildirimi: müşteri takip sayfasında "Hazır olunca haber ver"e basar, tarayıcının izin penceresi çıkar.
+İzin verirse bildirim adresi yalnızca o siparişe kaydedilir (`sunucu/003_bildirim_rapor.sql`); personel "Hazır"a
+basınca `supabase/functions/tetra-bildir` işlevi telefona bildirim gönderir ve kaydı siler. Telefon numarası
+toplanmaz. iPhone, ana ekrana eklenmemiş sayfalara bildirim izni vermez; orada sayfa açıkken sesli uyarı çalışır.
+İşlevin gizli değerleri (VAPID_PUBLIC, VAPID_PRIVATE) Supabase → Edge Functions → Secrets altındadır.
+
+Raporlar: 90 günden eski siparişler günlük özete dönüşür (`tetra_gun_ozet`), ayrıntıları silinir; raporlar
+özeti ve güncel siparişleri birlikte okur.
 
 ## Yayın
 

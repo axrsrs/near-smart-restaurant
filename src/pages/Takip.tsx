@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import Ikon from '../components/Ikon'
 import TemaDugmesi from '../components/TemaDugmesi'
+import { bildirimAc, bildirimDestegi } from '../lib/bildirim'
+import { useCanli } from '../lib/canli'
+import { cal } from '../lib/ses'
 import { takipOku, type SiparisDurumu, type Takip as TakipVerisi } from '../lib/veri'
 
 const ADIMLAR: { durum: SiparisDurumu; ad: string }[] = [
@@ -8,42 +12,75 @@ const ADIMLAR: { durum: SiparisDurumu; ad: string }[] = [
   { durum: 'hazir', ad: 'Hazır' },
   { durum: 'teslim', ad: 'Teslim edildi' },
 ]
-const ARALIK = 15_000
 
-/** Müşterinin QR ile açtığı sipariş takip sayfası. Sürekli bağlantı tutmaz: sayfa açıkken 15 saniyede bir durumu sorar. */
+/** Müşterinin QR ile açtığı takip sayfası. Durum değişince anında güncellenir; istenirse telefona bildirim gönderilir. */
 export default function Takip() {
   const { kod = '' } = useParams()
   const [veri, setVeri] = useState<TakipVerisi | null | undefined>(undefined) // undefined: yükleniyor, null: bulunamadı
   const [hata, setHata] = useState(false)
+  const [haber, setHaber] = useState<'kapali' | 'bekliyor' | 'bildirim' | 'ses'>('kapali')
+  const [haberNotu, setHaberNotu] = useState('')
+  const onceki = useRef<SiparisDurumu | null>(null)
   const bitti = veri?.durum === 'teslim' || veri?.durum === 'iptal' || veri === null
+  const gecerli = /^[0-9a-f]{32}$/.test(kod)
 
+  const sor = () => {
+    if (!gecerli) return setVeri(null)
+    takipOku(kod).then(
+      (v) => {
+        setVeri(v)
+        setHata(false)
+      },
+      () => setHata(true),
+    )
+  }
+  /* sipariş durumu değişince sunucu bu siparişin kanalına haber yollar; bağlantı yoksa 5 saniyede bir sorulur */
+  const bagli = useCanli(gecerli && !bitti ? kod : '', sor, 'tetra-takip')
+  const sorRef = useRef(sor)
+  useEffect(() => {
+    sorRef.current = sor
+  })
   useEffect(() => {
     if (bitti) return
-    let iptal = false
-    const sor = () => {
-      if (document.hidden) return
-      takipOku(kod)
-        .then((v) => {
-          if (iptal) return
-          setVeri(v)
-          setHata(false)
-        })
-        .catch(() => !iptal && setHata(true))
+    const calis = () => {
+      if (!document.hidden) sorRef.current()
     }
-    sor()
-    const sayac = setInterval(sor, ARALIK)
-    document.addEventListener('visibilitychange', sor)
+    calis()
+    const sayac = setInterval(calis, bagli ? 30_000 : 5000)
+    document.addEventListener('visibilitychange', calis)
     return () => {
-      iptal = true
       clearInterval(sayac)
-      document.removeEventListener('visibilitychange', sor)
+      document.removeEventListener('visibilitychange', calis)
     }
-  }, [kod, bitti])
+  }, [bitti, bagli, kod])
+
+  /* hazır olduğu an: ses ve titreşim (sayfa açıksa) */
+  useEffect(() => {
+    const d = veri?.durum ?? null
+    if (d === 'hazir' && onceki.current === 'hazirlaniyor') {
+      cal('hazir')
+      try {
+        navigator.vibrate?.([300, 150, 300, 150, 600])
+      } catch {
+        /* titreşim desteklenmiyor */
+      }
+    }
+    onceki.current = d
+  }, [veri?.durum])
+
+  const haberVer = async () => {
+    setHaber('bekliyor')
+    /* dokunuş sesi açar (lib/ses); bildirim izni ayrıca sorulur */
+    const s = await bildirimAc(kod)
+    setHaber(s.tamam ? 'bildirim' : 'ses')
+    setHaberNotu(s.tamam ? '' : s.hata)
+  }
 
   const sira = veri ? ADIMLAR.findIndex((a) => a.durum === veri.durum) : -1
+  const hazir = veri?.durum === 'hazir'
 
   return (
-    <div className="flex min-h-dvh flex-col items-center bg-ink px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
+    <div className={`flex min-h-dvh flex-col items-center px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] transition-colors ${hazir ? 'bg-ok/15' : 'bg-ink'}`}>
       <div className="flex w-full max-w-md justify-end">
         <TemaDugmesi />
       </div>
@@ -59,7 +96,8 @@ export default function Takip() {
         ) : (
           <>
             <p className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">Sipariş no</p>
-            <h1 className="text-8xl leading-none font-bold tracking-tight tabular-nums">{veri.no}</h1>
+            <h1 className={`text-8xl leading-none font-bold tracking-tight tabular-nums ${hazir ? 'yeni-hazir text-ok' : ''}`}>{veri.no}</h1>
+            {hazir && <p className="mt-3 text-xl font-semibold text-ok" role="status">Siparişiniz hazır, teslim alabilirsiniz.</p>}
             {veri.durum === 'iptal' ? (
               <p className="mt-5 rounded-xl border border-danger/50 px-4 py-3 text-base font-semibold text-danger">Bu sipariş iptal edildi.</p>
             ) : (
@@ -72,7 +110,20 @@ export default function Takip() {
                 ))}
               </ol>
             )}
-            {!bitti && <p className="mt-4 text-xs text-muted">{hata ? 'Bağlantı kurulamadı; yeniden deneniyor.' : 'Bu sayfa açıkken durum kendiliğinden güncellenir.'}</p>}
+
+            {veri.durum === 'hazirlaniyor' &&
+              (haber === 'kapali' || haber === 'bekliyor' ? (
+                <button type="button" disabled={haber === 'bekliyor'} onClick={() => void haberVer()} className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-[10px] bg-gold px-4 text-base font-semibold text-on-gold transition active:scale-[0.98] disabled:opacity-70">
+                  <Ikon ad="zil" className="size-5" />
+                  {haber === 'bekliyor' ? 'İzin bekleniyor…' : 'Hazır olunca haber ver'}
+                </button>
+              ) : (
+                <p role="status" className={`mt-5 rounded-[10px] border px-4 py-3 text-sm ${haber === 'bildirim' ? 'border-ok/50 text-ok' : 'border-warn/50 text-warn'}`}>
+                  {haber === 'bildirim' ? 'Bildirim açık. Bu sayfayı kapatsan bile siparişin hazır olunca telefonuna haber gelir.' : haberNotu}
+                </p>
+              ))}
+            {veri.durum === 'hazirlaniyor' && haber === 'kapali' && bildirimDestegi() === 'yok' && <p className="mt-2 text-xs text-muted">Bu tarayıcıda bildirim yok; düğmeye basarsan sayfa açıkken sesli uyarı verilir.</p>}
+            {!bitti && <p className="mt-4 text-xs text-muted">{hata ? 'Bağlantı kurulamadı; yeniden deneniyor.' : 'Durum değişince bu sayfa kendiliğinden güncellenir.'}</p>}
           </>
         )}
       </main>

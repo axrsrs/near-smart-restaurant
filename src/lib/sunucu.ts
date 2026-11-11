@@ -32,7 +32,7 @@ export async function cagir<T>(ad: string, govde: Record<string, unknown> = {}):
   if (yanit.error) {
     const kod = yanit.error.code ?? ''
     /* TT kodlu ve yetki (42501) hataları sunucunun yazdığı Türkçe iletiyi taşır; diğerleri iç ayrıntı sızdırmasın diye gizlenir */
-    if (/^TT\d{3}$/.test(kod) || kod === '42501') throw new SunucuHatasi(yanit.error.message, kod)
+    if (/^TT\d{3}$/.test(kod) || kod === '42501' || kod === '22023') throw new SunucuHatasi(yanit.error.message, kod)
     throw new SunucuHatasi(kod ? 'İşlem tamamlanamadı. Lütfen yeniden deneyin.' : BAGLANTI, kod || 'AG')
   }
   return yanit.data as T

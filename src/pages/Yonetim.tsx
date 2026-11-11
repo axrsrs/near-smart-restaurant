@@ -6,6 +6,7 @@ import { useYonetici } from '../lib/oturum'
 const SEKMELER: { yol: string; ad: string; ikon: IkonAdi }[] = [
   { yol: 'personel', ad: 'Personel', ikon: 'kisiler' },
   { yol: 'cihazlar', ad: 'Cihazlar', ikon: 'tablet' },
+  { yol: 'raporlar', ad: 'Raporlar', ikon: 'grafik' },
   { yol: 'isletme', ad: 'İşletme', ikon: 'dukkan' },
 ]
 
@@ -24,7 +25,7 @@ export default function Yonetim() {
           Ekran seçimi
         </button>
         <h1 className="text-2xl font-semibold tracking-tight">Yönetim</h1>
-        <nav aria-label="Yönetim bölümleri" className="mt-4 mb-6 grid grid-cols-3 gap-1 rounded-xl border border-line bg-ink-2 p-1">
+        <nav aria-label="Yönetim bölümleri" className="mt-4 mb-6 grid grid-cols-2 gap-1 sm:grid-cols-4 rounded-xl border border-line bg-ink-2 p-1">
           {SEKMELER.map((s) => (
             <NavLink
               key={s.yol}

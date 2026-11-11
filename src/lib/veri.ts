@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import { oku, yaz } from './depo'
 import { menuYukle } from './menu'
-import { cihazCagir, type CihazEkrani, type Sonuc } from './oturum'
+import { bildirimGonder, cihazCagir, type CihazEkrani, type Sonuc } from './oturum'
 import { cagir, hataMetni } from './sunucu'
 
 export type { Sonuc }
@@ -113,8 +113,9 @@ export async function siparisOlustur(s: { kalemler: { urunId: string; adet: numb
 
 export async function siparisDurumu(id: string, durum: SiparisDurumu): Promise<Sonuc> {
   try {
-    const y = await cihazCagir<Yanit & { siparis?: HamSiparis }>('tetra_siparis_durum', { p_id: id, p_durum: durum })
+    const y = await cihazCagir<Yanit & { siparis?: HamSiparis; bildirim?: boolean }>('tetra_siparis_durum', { p_id: id, p_durum: durum })
     if (!y.tamam || !y.siparis) return { tamam: false, hata: y.hata ?? 'İşlem tamamlanamadı.' }
+    if (y.bildirim) bildirimGonder(id) // müşteri bildirim istemişse telefonuna "hazır" bildirimi gider
     const yeni = cevir(y.siparis)
     ayarla(siparisler.map((x) => (x.id === id ? yeni : x)))
     return { tamam: true }
@@ -140,6 +141,14 @@ export async function tvListesi(): Promise<TvSiparis[]> {
 /* ───────── müşteri: sipariş takibi (takip koduyla, girişsiz) ───────── */
 export type Takip = { no: number; durum: SiparisDurumu; tur: SiparisTuru; isletme: { ad: string; logo: string } }
 export const takipOku = (kod: string) => cagir<Takip | null>('tetra_takip', { p_kod: kod })
+
+/* ───────── rapor (işletme sahibi) ───────── */
+export type RaporGunu = { gun: string; siparis: number; iptal: number; ciro: number; nakit: number; kart: number; burada: number; paket: number }
+export type Rapor = { ozet: Omit<RaporGunu, 'gun'>; gunler: RaporGunu[]; urunler: { ad: string; adet: number; ciro: number }[] }
+export const raporOku = (isletme: string, bas: string, bit: string) => cagir<Rapor>('tetra_rapor', { p_restaurant: isletme, p_bas: bas, p_bit: bit })
+
+/* ───────── paket yönetimi (yalnızca süper yönetici) ───────── */
+export const paketAyarla = (isletme: string, aktif: boolean) => dene(() => cagir<Yanit>('tetra_admin_ayarla', { p_restaurant: isletme, p_aktif: aktif }))
 
 /* ───────── cihaza özel ayar ───────── */
 const A_FIS = 'tetra-otomatik-fis'

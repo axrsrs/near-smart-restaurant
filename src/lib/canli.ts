@@ -4,10 +4,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { sunucu } from './sunucu'
 
-export type Konu = 'siparis' | 'menu' | 'personel'
+export type Konu = 'siparis' | 'menu' | 'personel' | 'durum'
 
 /** Kanala abone olur; haber geldikçe geriCagri çalışır. Dönüş: canlı bağlantı kurulu mu. */
-export function useCanli(kanal: string, geriCagri: (konu: Konu) => void): boolean {
+export function useCanli(kanal: string, geriCagri: (konu: Konu) => void, onek = 'tetra'): boolean {
   const [bagli, setBagli] = useState(false)
   const cb = useRef(geriCagri)
   useEffect(() => {
@@ -17,17 +17,17 @@ export function useCanli(kanal: string, geriCagri: (konu: Konu) => void): boolea
   useEffect(() => {
     if (!kanal) return
     const k = sunucu
-      .channel(`tetra:${kanal}`)
+      .channel(`${onek}:${kanal}`)
       .on('broadcast', { event: 'degisti' }, (ileti) => {
         const konu = (ileti.payload as { konu?: unknown } | undefined)?.konu
-        if (konu === 'siparis' || konu === 'menu' || konu === 'personel') cb.current(konu)
+        if (konu === 'siparis' || konu === 'menu' || konu === 'personel' || konu === 'durum') cb.current(konu)
       })
       .subscribe((durum) => setBagli(durum === 'SUBSCRIBED'))
     return () => {
       setBagli(false)
       void sunucu.removeChannel(k)
     }
-  }, [kanal])
+  }, [kanal, onek])
 
   return bagli
 }
