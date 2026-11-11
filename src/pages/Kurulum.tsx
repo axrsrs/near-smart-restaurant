@@ -1,9 +1,10 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import logo from '../assets/near-logo.png'
 import AkisArkaPlan from '../components/AkisArkaPlan'
 import Ikon, { type IkonAdi } from '../components/Ikon'
 import TemaDugmesi from '../components/TemaDugmesi'
+import { sunucu } from '../lib/sunucu'
 
 /** Bölüm ekrana girdiğinde yumuşakça belirir. Hareket azaltılmışsa ya da tarayıcı desteklemiyorsa doğrudan görünür. */
 function Belir({ children, gecikme = 0, className = '' }: { children: ReactNode; gecikme?: number; className?: string }) {
@@ -132,6 +133,26 @@ const ADIMLAR: { baslik: string; metin: string; ipucu: string; cizim: ReactNode 
 
 /** Yeni işletmeye gönderilen ilk kurulum sayfası. Giriş gerektirmez. */
 export default function Kurulum() {
+  /* destek WhatsApp numarası NearDiji site ayarlarındaki iletişim bilgisinden okunur; boşsa düğme görünmez */
+  const [whatsapp, setWhatsapp] = useState('')
+  useEffect(() => {
+    let iptal = false
+    sunucu
+      .from('site_content')
+      .select('data')
+      .eq('key', 'main')
+      .maybeSingle()
+      .then(({ data }) => {
+        const ham = (data?.data as { contact?: { whatsapp?: unknown } } | null)?.contact?.whatsapp
+        const rakam = typeof ham === 'string' ? ham.replace(/\D/g, '') : ''
+        if (!iptal && rakam.length >= 10 && rakam.length <= 15) setWhatsapp(rakam)
+      })
+    return () => {
+      iptal = true
+    }
+  }, [])
+  const waAdres = `https://wa.me/${whatsapp}?text=${encodeURIComponent('Merhaba, Tetra kurulumu için yazıyorum.')}`
+
   return (
     <div className="min-h-dvh bg-ink">
       <header className="relative isolate overflow-hidden">
@@ -183,10 +204,18 @@ export default function Kurulum() {
           <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed opacity-75 text-pretty">
             İlk siparişinizi aldığınızda geri kalanı kendiliğinden yerine oturur. Takıldığınız bir yer olursa bize yazmanız yeterli; birlikte çözeriz.
           </p>
-          <Link to="/giris" className="group mt-7 inline-flex h-14 items-center gap-2 rounded-[12px] bg-ink px-7 text-base font-semibold text-text transition hover:scale-[1.03] active:scale-[0.98]">
-            Kuruluma başla
-            <Ikon ad="ok" className="size-4 transition-transform group-hover:translate-x-1" />
-          </Link>
+          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link to="/giris" className="group inline-flex h-14 w-full items-center justify-center gap-2 rounded-[12px] bg-ink px-7 text-base font-semibold text-text transition hover:scale-[1.03] active:scale-[0.98] sm:w-auto">
+              Kuruluma başla
+              <Ikon ad="ok" className="size-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+            {whatsapp && (
+              <a href={waAdres} target="_blank" rel="noopener noreferrer" className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-[12px] border border-ink/30 px-7 text-base font-semibold text-ink transition hover:scale-[1.03] active:scale-[0.98] sm:w-auto">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="size-5"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 1.8a8.2 8.2 0 1 1-4.2 15.3l-.3-.2-2.9.8.8-2.8-.2-.3A8.2 8.2 0 0 1 12 3.8Zm-3.3 4.1c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3 2.4 1 2.9.8 3.4.7.5 0 1.7-.7 1.9-1.3.2-.7.2-1.2.2-1.3l-.6-.4-1.9-.9c-.3-.1-.5-.1-.7.2l-.9 1.1c-.2.2-.3.2-.6.1a7 7 0 0 1-2-1.3 7.6 7.6 0 0 1-1.4-1.8c-.2-.3 0-.4.1-.6l.4-.5.3-.5v-.5l-.9-2.1c-.2-.5-.4-.4-.6-.4h-.4Z" /></svg>
+                WhatsApp'tan yazın
+              </a>
+            )}
+          </div>
         </Belir>
         <p className="mt-8 text-center text-[11px] font-semibold tracking-[0.22em] text-muted uppercase">Tetra · NEAR</p>
       </main>
