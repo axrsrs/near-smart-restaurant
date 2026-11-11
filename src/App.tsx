@@ -4,11 +4,13 @@ import { ekranYolu, useCihaz, useOturum } from './lib/oturum'
 import EkranBekliyor from './pages/EkranBekliyor'
 import EkranSecimi from './pages/EkranSecimi'
 import Giris from './pages/Giris'
+import Kasa from './pages/Kasa'
+import Takip from './pages/Takip'
 import PinGiris from './pages/PinGiris'
 import Yonetim from './pages/Yonetim'
 import Isletme from './pages/yonetim/Isletme'
 import Personel from './pages/yonetim/Personel'
-import Urunler from './pages/yonetim/Urunler'
+
 
 function Korumali({ children }: { children: ReactNode }) {
   return useOturum() ? children : <Navigate to="/giris" replace />
@@ -33,12 +35,12 @@ export default function App() {
         <Route path="/giris" element={<Giris />} />
         <Route path="/ekran" element={<Korumali><EkranSecimi /></Korumali>} />
         <Route path="/pin/:ekran" element={<PinGiris />} />
-        <Route path="/kasa" element={<Korumali><EkranBekliyor ekran="kasa" /></Korumali>} />
+        <Route path="/kasa" element={<Korumali><Kasa /></Korumali>} />
+        <Route path="/t/:kod" element={<Takip />} />
         <Route path="/mutfak" element={<Korumali><EkranBekliyor ekran="mutfak" /></Korumali>} />
         <Route path="/tv" element={<Korumali><EkranBekliyor ekran="tv" /></Korumali>} />
         <Route path="/yonetim" element={<Korumali><Yonetim /></Korumali>}>
-          <Route index element={<Navigate to="urunler" replace />} />
-          <Route path="urunler" element={<Urunler />} />
+          <Route index element={<Navigate to="personel" replace />} />
           <Route path="personel" element={<Personel />} />
           <Route path="isletme" element={<Isletme />} />
         </Route>

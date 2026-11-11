@@ -95,3 +95,30 @@
   .isinlar { display: none; }
   .giris-kart { transition: none; }
 }
+
+/* ── fiş: ekranda gizli, yazdırırken yalnızca fiş basılır (80 mm termal) ── */
+.fis-kagit { display: none; }
+@media print {
+  @page { size: 80mm auto; margin: 3mm; }
+  html, body { background: #fff !important; }
+  body > *:not(.fis-kagit) { display: none !important; }
+  .fis-kagit {
+    display: block;
+    width: 72mm;
+    margin: 0 auto;
+    color: #000;
+    font: 12px/1.35 "Geist Variable", Arial, sans-serif;
+  }
+  .fis-kagit p { margin: 0 0 1mm; }
+  .fis-kagit hr { border: 0; border-top: 1px dashed #000; margin: 2mm 0; }
+  .fis-orta { text-align: center; }
+  .fis-kalin { font-weight: 700; }
+  .fis-buyuk { font-size: 15px; }
+  .fis-kucuk { font-size: 10px; }
+  .fis-no { font-size: 56px; font-weight: 800; line-height: 1; margin: 1mm 0 2mm !important; }
+  .fis-satir { display: flex; justify-content: space-between; gap: 3mm; margin-bottom: 1mm; }
+  .fis-satir span:first-child { min-width: 0; }
+  .fis-satir span:last-child { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .fis-satir em { display: block; font-style: normal; font-size: 11px; padding-left: 3mm; }
+  .fis-qr { display: block; width: 34mm; height: 34mm; margin: 1mm auto 2mm; }
+}

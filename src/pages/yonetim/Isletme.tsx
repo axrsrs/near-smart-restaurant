@@ -1,105 +1,80 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { ALAN, BTN_ANA, BTN_IKINCIL, ETIKET } from '../../components/bicim'
 import Ikon from '../../components/Ikon'
-import { isletmeKaydet, useIsletme } from '../../lib/veri'
+import { menuYukle, useMenu } from '../../lib/menu'
+import { slugKaydet, useSlug } from '../../lib/veri'
 
-const EN_BUYUK_DOSYA = 5 * 1024 * 1024
-const EN_BUYUK_KENAR = 640
-
-/** Logoyu okur; 640 pikselden büyükse oranını bozmadan küçültür (saydamlık korunur). */
-function logoOku(dosya: File): Promise<string> {
-  return new Promise((coz, red) => {
-    const adres = URL.createObjectURL(dosya)
-    const resim = new Image()
-    resim.onload = () => {
-      URL.revokeObjectURL(adres)
-      const oran = Math.min(1, EN_BUYUK_KENAR / Math.max(resim.naturalWidth, resim.naturalHeight))
-      const tuval = document.createElement('canvas')
-      tuval.width = Math.max(1, Math.round(resim.naturalWidth * oran))
-      tuval.height = Math.max(1, Math.round(resim.naturalHeight * oran))
-      const cx = tuval.getContext('2d')
-      if (!cx) return red(new Error('tuval'))
-      cx.drawImage(resim, 0, 0, tuval.width, tuval.height)
-      coz(tuval.toDataURL('image/png'))
-    }
-    resim.onerror = () => {
-      URL.revokeObjectURL(adres)
-      red(new Error('resim'))
-    }
-    resim.src = adres
-  })
-}
-
+/** NearMenu bağlantısı: ürünler, fiyatlar, fotoğraflar, işletme adı ve logosu NearMenu'deki kayıttan okunur. */
 export default function Isletme() {
-  const kayitli = useIsletme()
-  const [ad, setAd] = useState(kayitli.ad)
-  const [sube, setSube] = useState(kayitli.sube)
-  const [logo, setLogo] = useState(kayitli.logo)
-  const [hata, setHata] = useState('')
-  const [kaydedildi, setKaydedildi] = useState(false)
-  const dosya = useRef<HTMLInputElement>(null)
-  const degisti = ad !== kayitli.ad || sube !== kayitli.sube || logo !== kayitli.logo
-
-  const sec = async (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    e.target.value = ''
-    if (!f) return
-    setKaydedildi(false)
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(f.type)) return setHata('Logo PNG, JPG ya da WebP olmalı.')
-    if (f.size > EN_BUYUK_DOSYA) return setHata('Logo dosyası en fazla 5 MB olabilir.')
-    try {
-      setLogo(await logoOku(f))
-      setHata('')
-    } catch {
-      setHata('Logo dosyası okunamadı.')
-    }
-  }
+  const slug = useSlug()
+  const { menu, yukleniyor, hata } = useMenu(slug)
+  const [yazilan, setYazilan] = useState(slug)
+  const [formHata, setFormHata] = useState('')
+  const urunSayisi = menu?.kategoriler.reduce((t, k) => t + k.urunler.length, 0) ?? 0
 
   const gonder = (e: FormEvent) => {
     e.preventDefault()
-    const s = isletmeKaydet({ ad, sube, logo })
-    setHata(s.tamam ? '' : s.hata)
-    setKaydedildi(s.tamam)
+    const s = slugKaydet(yazilan)
+    setFormHata(s.tamam ? '' : s.hata)
   }
 
   return (
-    <form onSubmit={gonder} noValidate className="max-w-xl rounded-2xl border border-line bg-ink-2 p-5">
-      <div className="flex flex-col gap-4">
-        <div>
-          <label htmlFor="isletme-ad" className={ETIKET}>İşletme adı</label>
-          <input id="isletme-ad" value={ad} onChange={(e) => { setAd(e.target.value); setKaydedildi(false) }} maxLength={60} autoComplete="organization" className={ALAN} />
-        </div>
-        <div>
-          <label htmlFor="isletme-sube" className={ETIKET}>Şube <span className="font-normal text-muted">(isteğe bağlı)</span></label>
-          <input id="isletme-sube" value={sube} onChange={(e) => { setSube(e.target.value); setKaydedildi(false) }} maxLength={60} autoComplete="off" placeholder="Örnek: Merkez şube" className={ALAN} />
-        </div>
-        <div>
-          <span className={ETIKET}>Logo</span>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="grid h-20 w-36 flex-none place-items-center rounded-xl border border-line bg-ink p-2">
-              {logo ? <img src={logo} alt="Logo önizlemesi" className="max-h-full max-w-full object-contain" /> : <Ikon ad="resim" className="size-7 text-text/30" />}
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
-              <input ref={dosya} id="isletme-logo" type="file" accept="image/png,image/jpeg,image/webp" onChange={sec} className="sr-only" tabIndex={-1} aria-label="Logo dosyası" />
-              <button type="button" onClick={() => dosya.current?.click()} className={BTN_IKINCIL}>
-                {logo ? 'Logoyu değiştir' : 'Logo yükle'}
-              </button>
-              {logo && (
-                <button type="button" onClick={() => { setLogo(null); setKaydedildi(false) }} className={`${BTN_IKINCIL} text-danger`}>
-                  Kaldır
-                </button>
-              )}
-            </div>
+    <div className="grid max-w-3xl gap-4">
+      <section className="rounded-2xl border border-line bg-ink-2 p-5">
+        <h2 className="text-lg font-semibold">Bağlı işletme</h2>
+        <p className="mt-1 text-sm text-muted">Ürünler, fiyatlar ve fotoğraflar NearMenu'den okunur. Bir ürünü NearMenu'de değiştirdiğinde kasada da değişir.</p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-line bg-ink p-4">
+          <div className="grid h-16 w-28 flex-none place-items-center">
+            {menu?.isletme.logo ? <img src={menu.isletme.logo} alt="" className="max-h-full max-w-full object-contain" /> : <Ikon ad="dukkan" className="size-7 text-text/30" />}
           </div>
-          <p className="mt-2 text-xs text-muted">Üst barda, PIN ekranında ve TV ekranında görünür. Saydam zeminli PNG en iyi sonucu verir.</p>
+          <div className="min-w-0 flex-1">
+            {menu ? (
+              <>
+                <p className="truncate text-base font-semibold">{menu.isletme.ad}</p>
+                <p className="text-sm text-muted tabular-nums">{menu.kategoriler.length} kategori · {urunSayisi} ürün</p>
+                <p className="text-xs text-muted">Son güncelleme: {new Date(menu.alindi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
+              </>
+            ) : (
+              <p className="text-sm text-muted">{yukleniyor ? 'Menü yükleniyor…' : 'Menü yüklenemedi.'}</p>
+            )}
+          </div>
         </div>
-      </div>
-      <p role="status" aria-live="polite" className={`mt-4 min-h-5 text-[13px] ${hata ? 'text-danger' : 'text-ok'}`}>
-        {hata || (kaydedildi ? 'Kaydedildi.' : '')}
-      </p>
-      <button type="submit" disabled={!degisti} className={`${BTN_ANA} mt-1 w-full sm:w-auto`}>
-        Kaydet
-      </button>
-    </form>
+        <p role="status" aria-live="polite" className="mt-2 min-h-5 text-[13px] text-warn">{hata}</p>
+
+        <div className="mt-2 flex flex-col gap-2.5 sm:flex-row">
+          <button type="button" disabled={yukleniyor} onClick={() => menuYukle(slug, true)} className={BTN_IKINCIL}>
+            <Ikon ad="yenile" className={`size-4 ${yukleniyor ? 'animate-spin' : ''}`} />
+            Menüyü şimdi yenile
+          </button>
+          <a href={`https://neardiji.com/${encodeURIComponent(slug)}`} target="_blank" rel="noopener noreferrer" className={BTN_IKINCIL}>
+            <Ikon ad="dis" className="size-4" />
+            NearMenu'yü aç
+          </a>
+        </div>
+      </section>
+
+      <form onSubmit={gonder} noValidate className="rounded-2xl border border-line bg-ink-2 p-5">
+        <label htmlFor="nearmenu-adres" className={ETIKET}>NearMenu adresi</label>
+        <div className="flex flex-col gap-2.5 sm:flex-row">
+          <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-line bg-ink focus-within:border-gold focus-within:ring-3 focus-within:ring-gold/20">
+            <span className="flex-none pl-3.5 text-base text-muted">neardiji.com/</span>
+            <input
+              id="nearmenu-adres"
+              value={yazilan}
+              onChange={(e) => { setYazilan(e.target.value.toLowerCase()); setFormHata('') }}
+              maxLength={60}
+              autoCapitalize="off"
+              autoComplete="off"
+              spellCheck={false}
+              className={`${ALAN} border-0 bg-transparent pl-0 focus:ring-0`}
+            />
+          </div>
+          <button type="submit" disabled={yazilan.trim() === slug} className={BTN_ANA}>Bağla</button>
+        </div>
+        <p role="alert" aria-live="polite" className="mt-2 min-h-5 text-[13px] text-danger">{formHata}</p>
+        <p className="text-xs text-muted">Önizlemede adres elle yazılır. Sunucu bağlandığında işletme, giriş yapan hesaptan kendiliğinden belirlenir.</p>
+      </form>
+    </div>
   )
 }

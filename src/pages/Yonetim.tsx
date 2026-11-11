@@ -3,9 +3,8 @@ import Ikon, { type IkonAdi } from '../components/Ikon'
 import UstBar from '../components/UstBar'
 
 const SEKMELER: { yol: string; ad: string; ikon: IkonAdi }[] = [
-  { yol: 'urunler', ad: 'Ürünler', ikon: 'etiket' },
   { yol: 'personel', ad: 'Personel', ikon: 'kisiler' },
-  { yol: 'isletme', ad: 'İşletme', ikon: 'dukkan' },
+  { yol: 'isletme', ad: 'NearMenu', ikon: 'dukkan' },
 ]
 
 export default function Yonetim() {
@@ -19,7 +18,7 @@ export default function Yonetim() {
           Ekran seçimi
         </button>
         <h1 className="text-2xl font-semibold tracking-tight">Yönetim</h1>
-        <nav aria-label="Yönetim bölümleri" className="mt-4 mb-6 grid grid-cols-3 gap-1 rounded-xl border border-line bg-ink-2 p-1">
+        <nav aria-label="Yönetim bölümleri" className="mt-4 mb-6 grid grid-cols-2 gap-1 rounded-xl border border-line bg-ink-2 p-1">
           {SEKMELER.map((s) => (
             <NavLink
               key={s.yol}

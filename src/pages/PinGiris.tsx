@@ -5,7 +5,8 @@ import GirisKabugu from '../components/GirisKabugu'
 import Ikon from '../components/Ikon'
 import { BTN_ANA } from '../components/bicim'
 import { cikis, EKRAN_ADI, PIN_ISTEYEN, pinDogrula, useOturum, usePersonel, type Ekran } from '../lib/oturum'
-import { useIsletme, usePersonelListesi, type Yetki } from '../lib/veri'
+import { useIsletme } from '../lib/isletme'
+import { usePersonelListesi, type Yetki } from '../lib/veri'
 
 const TUSLAR = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 const TUS =

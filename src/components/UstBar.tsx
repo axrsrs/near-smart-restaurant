@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { cikis, useOturum } from '../lib/oturum'
-import { useIsletme } from '../lib/veri'
+import { useIsletme } from '../lib/isletme'
 import Ikon from './Ikon'
 import OnizlemeEtiketi from './OnizlemeEtiketi'
 import TemaDugmesi from './TemaDugmesi'
@@ -8,7 +8,7 @@ import TemaDugmesi from './TemaDugmesi'
 /** Giriş sonrası üst bar: işletmenin logosu (yoksa baş harfleri), adı ve şubesi. */
 export default function UstBar() {
   const oturum = useOturum()
-  const { ad, sube, logo } = useIsletme()
+  const { ad, logo } = useIsletme()
   const git = useNavigate()
   if (!oturum) return null
   const harfler = ad
@@ -27,7 +27,7 @@ export default function UstBar() {
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm leading-tight font-semibold">{ad}</p>
-          {sube && <p className="truncate text-xs text-muted">{sube}</p>}
+          <p className="truncate text-xs text-muted">Smart Restaurant</p>
         </div>
         <OnizlemeEtiketi className="hidden sm:inline-flex" />
         <TemaDugmesi />
