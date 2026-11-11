@@ -49,7 +49,8 @@ açıkken sesli ve ekranda uyarı verilir.
 
 ## Yayın
 
-- Deneme adresi: https://near-smart-restaurant.ammarallsalam.workers.dev (arama motorlarına kapalı)
+- Adres: https://tetra.neardiji.com (arama motorlarına kapalı)
+- Yedek adres: https://near-smart-restaurant.ammarallsalam.workers.dev
 - `npm run yayinla` → derler, `dist/` klasörünü tek Worker dosyasına paketler ve Cloudflare'e yükler.
 - Tek dosyalık sürüm: `npm run build:tek` → `dist-tek/near-smart-restaurant.html`
 
