@@ -1,7 +1,10 @@
 -- Tetra · temel şema (NearMenu ile aynı Supabase projesi)
+-- UYGULAMA: Supabase → SQL Editor → bu dosyanın tamamını yapıştır → Run. Tek işlemde çalışır: hata olursa hiçbir şey eklenmez.
 -- NearMenu tabloları değişmez. Tüm Tetra tabloları "private" şemadadır: API'den doğrudan erişilemez,
 -- yalnızca aşağıdaki yetki denetimli işlevler üzerinden okunur ve yazılır.
 -- Tek istisna: tetra_tukendi() kasadan işaretlenen ürünün public.products.sold alanını günceller.
+
+begin;
 
 -- ───────────────────────── tablolar ─────────────────────────
 create table private.tetra_isletme (
@@ -196,7 +199,7 @@ exception when others then
 end $$;
 
 create function private.tetra_siparis_json(s private.tetra_siparis, p_tam boolean) returns jsonb
-language sql immutable set search_path to '' as
+language sql stable set search_path to '' as
 $$
   select jsonb_build_object('id', s.id, 'no', s.no, 'gun', s.gun, 'zaman', s.zaman, 'tur', s.tur, 'durum', s.durum,
            'kalemler', s.kalemler, 'personel_ad', s.personel_ad, 'hazir_zaman', s.hazir_zaman)
@@ -524,3 +527,5 @@ grant execute on function public.tetra_baslangic(), public.tetra_personel_liste(
 grant execute on function public.tetra_cihaz_durum(text, text), public.tetra_pin(text, text), public.tetra_kilitle(text),
   public.tetra_siparis_olustur(text, text, jsonb, text, text, uuid), public.tetra_siparisler(text, text),
   public.tetra_siparis_durum(text, text, uuid, text), public.tetra_tukendi(text, text, uuid, boolean), public.tetra_takip(text) to anon, authenticated;
+
+commit;
