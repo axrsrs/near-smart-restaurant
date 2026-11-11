@@ -4,7 +4,7 @@
   "name": "near-smart-restaurant",
   "main": "dist-worker/worker.js",
   "compatibility_date": "2025-01-01",
-  "workers_dev": true,
+  "workers_dev": false,
   "routes": [{ "pattern": "tetra.neardiji.com", "custom_domain": true }],
   "preview_urls": false
 }
