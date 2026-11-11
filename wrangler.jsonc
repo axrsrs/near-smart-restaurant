@@ -1,4 +1,4 @@
-// NEAR Smart Restaurant — Cloudflare Workers (deneme adresi)
+// Tetra (NEAR) — Cloudflare Workers (deneme adresi)
 // Yayın: npm run yayinla  → derler, dist/ klasörünü tek Worker dosyasına paketler, yükler.
 {
   "name": "near-smart-restaurant",

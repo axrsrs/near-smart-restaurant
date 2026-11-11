@@ -34,7 +34,7 @@ export default function Giris() {
     <GirisKabugu>
       <form onSubmit={gonder} noValidate>
         <img src={logo} alt="NEAR Agency" width={560} height={146} className="near-logo mx-auto mb-3.5 h-[34px] w-auto" />
-        <p className="mb-4 text-center text-[11px] font-semibold tracking-[0.22em] text-gold uppercase">Smart Restaurant</p>
+        <p className="mb-4 text-center text-[11px] font-semibold tracking-[0.22em] text-gold uppercase">Tetra</p>
         <h1 className="mb-1.5 text-center text-[22px] leading-tight font-semibold tracking-tight">İşletme girişi</h1>
         <p className="mb-6 text-center text-[13px] text-muted">Kasa, mutfak ve ekranlar için giriş yapın</p>
 

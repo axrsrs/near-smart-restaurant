@@ -45,6 +45,7 @@ export default function Fis({ siparis, isletmeAd }: { siparis: Siparis; isletmeA
       <QrKod metin={takipAdresi(siparis.kod)} className="fis-qr" />
       <p className="fis-orta">Siparişiniz hazır olunca haber almak için QR kodu telefonunuzla okutun.</p>
       <p className="fis-orta fis-kucuk">Bu belge mali değeri olmayan bilgi fişidir.</p>
+      <p className="fis-orta fis-kucuk fis-marka">TETRA · neardiji.com</p>
     </div>,
     document.body,
   )

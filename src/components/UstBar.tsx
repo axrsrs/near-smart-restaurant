@@ -27,7 +27,7 @@ export default function UstBar() {
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm leading-tight font-semibold">{ad}</p>
-          <p className="truncate text-xs text-muted">Smart Restaurant</p>
+          <p className="truncate text-xs text-muted">Tetra</p>
         </div>
         <OnizlemeEtiketi className="hidden sm:inline-flex" />
         <TemaDugmesi />

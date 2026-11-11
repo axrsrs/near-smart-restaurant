@@ -1,4 +1,4 @@
-/* NEAR Smart Restaurant — tema (Tailwind v4)
+/* Tetra (NEAR) — tema (Tailwind v4)
    Zemin: NEAR mono (krem / siyah) · Vurgu: mavi. Koyu tema aynı adları yeniden tanımlar. */
 @import "tailwindcss";
 @import "@fontsource-variable/geist";
@@ -120,5 +120,6 @@
   .fis-satir span:first-child { min-width: 0; }
   .fis-satir span:last-child { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .fis-satir em { display: block; font-style: normal; font-size: 11px; padding-left: 3mm; }
+  .fis-marka { margin-top: 2mm !important; letter-spacing: 0.18em; }
   .fis-qr { display: block; width: 34mm; height: 34mm; margin: 1mm auto 2mm; }
 }

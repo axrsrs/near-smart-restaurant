@@ -1,6 +1,7 @@
-# NEAR Smart Restaurant
+# Tetra
 
-Self servis ve gel-al işletmeleri için sipariş takip sistemi.
+NEAR ailesinin sipariş sistemi (eski çalışma adı: NEAR Smart Restaurant). Self servis ve gel-al işletmeleri
+için kasa, mutfak, TV ekranı ve müşteriye hazır bildirimi.
 
 ## Geliştirme
 
@@ -16,7 +17,7 @@ NEAR tek platformdur; işletmeye iki paketten biri açılır:
 | | Menü | Menü + Sistem |
 | --- | --- | --- |
 | QR menü ve NearMenu paneli | ✓ | ✓ |
-| Kasa, Mutfak, TV, QR sipariş takibi (bu proje) | – | ✓ |
+| Tetra: Kasa, Mutfak, TV, QR sipariş takibi (bu proje) | – | ✓ |
 
 - Tek veritabanı (NearMenu'nün Supabase projesi), tek işletme kaydı, tek giriş.
 - Tek ürün listesi: ürün, fiyat ve fotoğraf NearMenu'de girilir; kasa aynı kaydı okur (`src/lib/menu.ts`).

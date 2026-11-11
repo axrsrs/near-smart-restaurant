@@ -5,5 +5,5 @@ import { useSlug } from './veri'
 export function useIsletme() {
   const slug = useSlug()
   const { menu } = useMenu(slug)
-  return { slug, ad: menu?.isletme.ad || 'NEAR Smart Restaurant', logo: menu?.isletme.logo || null }
+  return { slug, ad: menu?.isletme.ad || 'Tetra', logo: menu?.isletme.logo || null }
 }

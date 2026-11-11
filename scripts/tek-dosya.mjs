@@ -23,7 +23,7 @@ const html = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#ebe9e5">
 <meta name="robots" content="noindex">
-<title>NEAR Smart Restaurant</title>
+<title>Tetra</title>
 <script>${guvenli(tema)}</script>
 <style>${css.replace(/<\/style/gi, '<\\/style')}</style>
 </head>

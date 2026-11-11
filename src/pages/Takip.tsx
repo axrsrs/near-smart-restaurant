@@ -47,6 +47,7 @@ export default function Takip() {
           </>
         )}
       </main>
+      <p className="mt-5 text-[11px] font-semibold tracking-[0.22em] text-muted uppercase">Tetra · NEAR</p>
     </div>
   )
 }
