@@ -39,6 +39,7 @@ NEAR tek platformdur; işletmeye iki paketten biri açılır:
 | `/mutfak` | Mutfak cihazı | PIN, gelen siparişler (canlı), Hazır / Teslim edildi / Geri al, yeni siparişte ses |
 | `/tv` | TV cihazı | Hazırlanan ve hazır numaralar (canlı), hazır olunca ses, tam ekran |
 | `/t/<kod>` | Müşteri | QR ile açılan sipariş takip sayfası |
+| `/kurulum` | Herkes | Yeni işletmeye gönderilen ilk kurulum sayfası (5 adım) |
 
 ## Kimlik ve yetki
 

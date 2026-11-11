@@ -5,6 +5,7 @@ import { cihazYenile, EKRAN_ADI, PIN_ISTEYEN, useCihaz, useYonetici, type CihazE
 import EkranSecimi from './pages/EkranSecimi'
 import Giris from './pages/Giris'
 import Kasa from './pages/Kasa'
+import Kurulum from './pages/Kurulum'
 import Mutfak from './pages/Mutfak'
 import PinGiris from './pages/PinGiris'
 import Takip from './pages/Takip'
@@ -82,6 +83,7 @@ export default function App() {
         <Route path="/mutfak" element={<CihazSart ekran="mutfak">{(b) => (b.personel ? <Mutfak isletme={b.isletme} personel={b.personel} kanal={b.kanal} /> : null)}</CihazSart>} />
         <Route path="/tv" element={<CihazSart ekran="tv">{(b) => <Tv isletme={b.isletme} kanal={b.kanal} />}</CihazSart>} />
         <Route path="/t/:kod" element={<Takip />} />
+        <Route path="/kurulum" element={<Kurulum />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Yonlendirici>
