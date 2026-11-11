@@ -144,8 +144,10 @@ export default function Kurulum() {
       .maybeSingle()
       .then(({ data }) => {
         const ham = (data?.data as { contact?: { whatsapp?: unknown } } | null)?.contact?.whatsapp
-        const rakam = typeof ham === 'string' ? ham.replace(/\D/g, '') : ''
-        if (!iptal && rakam.length >= 10 && rakam.length <= 15) setWhatsapp(rakam)
+        /* panelde "0555 555 55 55" biçiminde de yazılabilir: baştaki 0 atılır, 10 haneli numaraya Türkiye kodu eklenir */
+        let rakam = typeof ham === 'string' ? ham.replace(/\D/g, '').replace(/^0+/, '') : ''
+        if (rakam.length === 10) rakam = '90' + rakam
+        if (!iptal && rakam.length >= 11 && rakam.length <= 15) setWhatsapp(rakam)
       })
     return () => {
       iptal = true
