@@ -15,6 +15,17 @@ const YOL: Record<string, ReactNode> = {
   kasa: (<><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M7 20h10M12 16v4M7 9h4M15 9h2M7 12h2" /></>),
   mutfak: <path d="M6 14a4 4 0 0 1 .5-7.9A5 5 0 0 1 16 5a4 4 0 0 1 2 9M6 14v6h12v-6M10 17v3M14 17v3" />,
   tv: (<><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8M12 17v4" /></>),
+  arti: <path d="M12 5v14M5 12h14" />,
+  kalem: (<><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></>),
+  cop: (<><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" /></>),
+  yukari: <path d="m6 15 6-6 6 6" />,
+  asagi: <path d="m6 9 6 6 6-6" />,
+  ara: (<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>),
+  kapat: <path d="M6 6l12 12M18 6 6 18" />,
+  etiket: (<><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z" /><circle cx="7.5" cy="7.5" r="1.2" /></>),
+  kisiler: (<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.7a3.5 3.5 0 0 1 0 6.6M21.5 20a6.5 6.5 0 0 0-4-6" /></>),
+  dukkan: (<><path d="M4 9v11h16V9M3 9l1.5-5h15L21 9a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0ZM9 20v-6h6v6" /></>),
+  resim: (<><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="m21 16-5-5-9 9" /></>),
   yonetim: (<><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></>),
 }
 

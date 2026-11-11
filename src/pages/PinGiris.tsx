@@ -3,7 +3,9 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import logoNear from '../assets/near-logo.png'
 import GirisKabugu from '../components/GirisKabugu'
 import Ikon from '../components/Ikon'
+import { BTN_ANA } from '../components/bicim'
 import { cikis, EKRAN_ADI, PIN_ISTEYEN, pinDogrula, useOturum, usePersonel, type Ekran } from '../lib/oturum'
+import { useIsletme, usePersonelListesi, type Yetki } from '../lib/veri'
 
 const TUSLAR = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 const TUS =
@@ -18,14 +20,16 @@ export default function PinGiris() {
   const [hata, setHata] = useState('')
   const [bekle, setBekle] = useState(false)
   const gecerli = PIN_ISTEYEN.includes(ekran as Ekran)
-  const hedef = ekran as Ekran
+  const hedef = ekran as Yetki
+  const { ad, logo } = useIsletme()
+  const tanimli = usePersonelListesi().some((k) => k.aktif && k.yetkiler.includes(hedef))
 
   const pinRef = useRef('')
   const mesgul = useRef(false)
 
   const bas = useCallback(
     (tus: string) => {
-      if (mesgul.current || !gecerli) return
+      if (mesgul.current || !gecerli || !tanimli) return
       const p = pinRef.current
       const yeni = tus === 'sil' ? p.slice(0, -1) : p.length < 4 ? p + tus : p
       pinRef.current = yeni
@@ -45,7 +49,7 @@ export default function PinGiris() {
         }
       })
     },
-    [gecerli, hedef, git],
+    [gecerli, tanimli, hedef, git],
   )
 
   useEffect(() => {
@@ -62,8 +66,6 @@ export default function PinGiris() {
   if (!gecerli) return <Navigate to="/ekran" replace />
   if (personel?.ekran === hedef) return <Navigate to={`/${hedef}`} replace />
 
-  const { ad, logo } = oturum.isletme
-
   return (
     <GirisKabugu genislik="max-w-[340px]">
       {logo ? (
@@ -73,6 +75,20 @@ export default function PinGiris() {
       )}
       <p className="mb-4 text-center text-[11px] font-semibold tracking-[0.22em] text-gold uppercase">{EKRAN_ADI[hedef]}</p>
       <h1 className="mb-1.5 text-center text-[22px] leading-tight font-semibold tracking-tight">Personel girişi</h1>
+      {!tanimli ? (
+        <>
+          <p className="mb-5 text-center text-[13px] text-muted">
+            {EKRAN_ADI[hedef]} ekranı için tanımlı personel yok. Önce Yönetim bölümünden personel ekleyip PIN verin.
+          </p>
+          <button type="button" onClick={() => git('/yonetim/personel')} className={`${BTN_ANA} w-full`}>
+            Personel ekle
+          </button>
+          <button type="button" onClick={() => git('/ekran')} className="mt-2 min-h-11 w-full rounded-lg text-[13px] text-muted underline underline-offset-4 hover:text-text">
+            Ekran seçimine dön
+          </button>
+        </>
+      ) : (
+        <>
       <p className="mb-5 text-center text-[13px] text-muted">{ad} · 4 haneli PIN kodunu gir</p>
 
       <div key={hata} role="img" aria-label={`${pin.length} / 4 hane girildi`} className={`mb-2 flex justify-center gap-3.5 ${hata ? 'salla' : ''}`}>
@@ -117,6 +133,8 @@ export default function PinGiris() {
       >
         Yönetici girişi (e-posta ile)
       </button>
+        </>
+      )}
     </GirisKabugu>
   )
 }

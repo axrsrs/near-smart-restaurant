@@ -16,10 +16,16 @@ npm run dev
 | `/giris` | İşletme girişi (e-posta + şifre) |
 | `/ekran` | Bu cihaz hangi ekran olacak: Kasa, Mutfak, TV ekranı, Yönetim |
 | `/pin/kasa`, `/pin/mutfak` | Personel girişi (4 haneli PIN) |
-| `/kasa`, `/mutfak`, `/tv`, `/yonetim` | Sonraki aşamalarda kurulacak ekranların giriş noktası |
+| `/yonetim/urunler` | Ürünler, fiyatlar, kategoriler |
+| `/yonetim/personel` | Personel, ekran yetkileri, PIN |
+| `/yonetim/isletme` | İşletme adı, şube, logo |
+| `/kasa`, `/mutfak`, `/tv` | Sonraki aşamalarda kurulacak ekranların giriş noktası |
 
-Giriş ve PIN şu an **önizleme** modunda: sunucu bağlı değil, bilgiler yalnızca biçim olarak denetlenir
-(`src/lib/oturum.ts`). Sunucu bağlanınca yalnızca o dosya değişir.
+Şu an **önizleme** modunda çalışır: veriler bu cihazın tarayıcısında saklanır (`src/lib/veri.ts`), yönetici
+girişi yalnızca biçim olarak denetlenir (`src/lib/oturum.ts`). Personel PIN'i gerçekten denetlenir; art arda
+5 hatalı denemede 30 saniye kilitlenir. Sunucu bağlanınca yalnızca bu iki dosyanın içi değişir.
+
+Tek dosyalık sürüm: `npm run build:tek` → `dist-tek/near-smart-restaurant.html`
 
 ## Tema
 

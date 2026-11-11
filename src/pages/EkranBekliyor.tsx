@@ -3,15 +3,14 @@ import Ikon from '../components/Ikon'
 import UstBar from '../components/UstBar'
 import { EKRAN_ADI, PIN_ISTEYEN, personelCikis, usePersonel, type Ekran } from '../lib/oturum'
 
-const ASAMA: Record<Ekran, string> = {
-  yonetim: 'Ürün yönetimi 2. aşamada kurulacak.',
+const ASAMA: Record<Exclude<Ekran, 'yonetim'>, string> = {
   kasa: 'Kasa ekranı 3. aşamada kurulacak.',
   mutfak: 'Mutfak ekranı 4. aşamada kurulacak.',
   tv: 'TV ekranı 5. aşamada kurulacak.',
 }
 
 /** Sıradaki aşamalarda kurulacak ekranların giriş noktası. Her ekran kendi aşamasında bu sayfanın yerini alır. */
-export default function EkranBekliyor({ ekran }: { ekran: Ekran }) {
+export default function EkranBekliyor({ ekran }: { ekran: Exclude<Ekran, 'yonetim'> }) {
   const personel = usePersonel()
   const git = useNavigate()
   const pinli = PIN_ISTEYEN.includes(ekran)
