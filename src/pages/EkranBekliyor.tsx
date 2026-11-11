@@ -1,7 +1,8 @@
+import { useEffect } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import Ikon from '../components/Ikon'
 import UstBar from '../components/UstBar'
-import { EKRAN_ADI, PIN_ISTEYEN, personelCikis, usePersonel, type Ekran } from '../lib/oturum'
+import { cihazKilitle, EKRAN_ADI, PIN_ISTEYEN, personelCikis, useGecerliPersonel, type Ekran } from '../lib/oturum'
 
 type Bekleyen = Exclude<Ekran, 'yonetim' | 'kasa'>
 const ASAMA: Record<Bekleyen, string> = {
@@ -11,11 +12,12 @@ const ASAMA: Record<Bekleyen, string> = {
 
 /** Sıradaki aşamalarda kurulacak ekranların giriş noktası. Her ekran kendi aşamasında bu sayfanın yerini alır. */
 export default function EkranBekliyor({ ekran }: { ekran: Bekleyen }) {
-  const personel = usePersonel()
+  const personel = useGecerliPersonel('mutfak')
+  useEffect(cihazKilitle, [])
   const git = useNavigate()
   const pinli = PIN_ISTEYEN.includes(ekran)
 
-  if (pinli && personel?.ekran !== ekran) return <Navigate to={`/pin/${ekran}`} replace />
+  if (pinli && !personel) return <Navigate to={`/pin/${ekran}`} replace />
 
   return (
     <div className="min-h-dvh bg-ink">

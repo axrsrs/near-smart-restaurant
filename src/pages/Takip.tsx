@@ -37,7 +37,7 @@ export default function Takip() {
             ) : (
               <ol className="mt-6 flex flex-col gap-2 text-left">
                 {ADIMLAR.map((a, i) => (
-                  <li key={a.durum} aria-current={i === sira ? 'step' : undefined} className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-base font-semibold ${i === sira ? (a.durum === 'hazirlaniyor' ? 'border-warn bg-warn/10 text-warn' : 'border-ok bg-ok/10 text-ok') : i < sira ? 'border-line text-muted' : 'border-line text-text/35'}`}>
+                  <li key={a.durum} aria-current={i === sira ? 'step' : undefined} className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-base font-semibold ${i === sira ? (a.durum === 'hazirlaniyor' ? 'border-warn bg-ink-2 text-warn' : 'border-ok bg-ok/10 text-ok') : i < sira ? 'border-line text-muted' : 'border-line text-muted'}`}>
                     <span className={`size-2.5 flex-none rounded-full ${i <= sira ? 'bg-current' : 'border border-current'}`} />
                     {a.ad}
                   </li>

@@ -6,21 +6,37 @@ export default function Pencere({ baslik, kapat, children }: { baslik: string; k
   const id = useId()
   const kutu = useRef<HTMLDivElement>(null)
 
+  const kapatRef = useRef(kapat)
+  useEffect(() => {
+    kapatRef.current = kapat
+  })
+
+  /* yalnızca açılışta çalışır: ilk alana odaklanır, Esc ile kapanır, Tab pencerenin içinde döner */
   useEffect(() => {
     const onceki = document.activeElement as HTMLElement | null
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') kapat()
+    const tus = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return kapatRef.current()
+      if (e.key !== 'Tab' || !kutu.current) return
+      const odaklar = [...kutu.current.querySelectorAll<HTMLElement>('button:not([disabled]), input, select, textarea, a[href]')].filter((x) => x.offsetParent !== null)
+      if (!odaklar.length) return
+      const ilk = odaklar[0]
+      const son = odaklar[odaklar.length - 1]
+      const simdiki = document.activeElement
+      if (e.shiftKey ? simdiki === ilk || !kutu.current.contains(simdiki) : simdiki === son || !kutu.current.contains(simdiki)) {
+        e.preventDefault()
+        ;(e.shiftKey ? son : ilk).focus()
+      }
     }
-    document.addEventListener('keydown', esc)
+    document.addEventListener('keydown', tus)
     const tasma = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     kutu.current?.querySelector<HTMLElement>('[data-ilk], input, select, textarea')?.focus()
     return () => {
-      document.removeEventListener('keydown', esc)
+      document.removeEventListener('keydown', tus)
       document.body.style.overflow = tasma
       onceki?.focus?.()
     }
-  }, [kapat])
+  }, [])
 
   return (
     <div

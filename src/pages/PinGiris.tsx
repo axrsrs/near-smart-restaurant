@@ -4,7 +4,7 @@ import logoNear from '../assets/near-logo.png'
 import GirisKabugu from '../components/GirisKabugu'
 import Ikon from '../components/Ikon'
 import { BTN_ANA } from '../components/bicim'
-import { cikis, EKRAN_ADI, PIN_ISTEYEN, pinDogrula, useOturum, usePersonel, type Ekran } from '../lib/oturum'
+import { cihazKilitle, cikis, EKRAN_ADI, PIN_ISTEYEN, pinDogrula, useGecerliPersonel, useOturum, type Ekran } from '../lib/oturum'
 import { useIsletme } from '../lib/isletme'
 import { usePersonelListesi, type Yetki } from '../lib/veri'
 
@@ -15,7 +15,6 @@ const TUS =
 export default function PinGiris() {
   const { ekran } = useParams()
   const oturum = useOturum()
-  const personel = usePersonel()
   const git = useNavigate()
   const [pin, setPin] = useState('')
   const [hata, setHata] = useState('')
@@ -24,6 +23,7 @@ export default function PinGiris() {
   const hedef = ekran as Yetki
   const { ad, logo } = useIsletme()
   const tanimli = usePersonelListesi().some((k) => k.aktif && k.yetkiler.includes(hedef))
+  const personel = useGecerliPersonel(hedef)
 
   const pinRef = useRef('')
   const mesgul = useRef(false)
@@ -53,6 +53,11 @@ export default function PinGiris() {
     [gecerli, tanimli, hedef, git],
   )
 
+  /* personeli tanımlı bir ekran PIN'e geldiyse cihaz artık kasa/mutfak cihazıdır: yönetici bölümleri kilitlenir */
+  useEffect(() => {
+    if (gecerli && tanimli) cihazKilitle()
+  }, [gecerli, tanimli])
+
   useEffect(() => {
     const tus = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
@@ -65,7 +70,7 @@ export default function PinGiris() {
 
   if (!oturum) return <Navigate to="/giris" replace />
   if (!gecerli) return <Navigate to="/ekran" replace />
-  if (personel?.ekran === hedef) return <Navigate to={`/${hedef}`} replace />
+  if (personel) return <Navigate to={`/${hedef}`} replace />
 
   return (
     <GirisKabugu genislik="max-w-[340px]">

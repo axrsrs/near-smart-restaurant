@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import Anahtar from '../components/Anahtar'
 import { ALAN, BTN_ANA, BTN_IKINCIL, IKON_BTN } from '../components/bicim'
@@ -12,7 +12,7 @@ import { oku, yaz } from '../lib/depo'
 import { ODEME_ADI, takipAdresi, TUR_ADI } from '../lib/etiketler'
 import { useIsletme } from '../lib/isletme'
 import { menuYukle, useMenu, type MenuUrun } from '../lib/menu'
-import { personelCikis, usePersonel } from '../lib/oturum'
+import { cihazKilitle, personelCikis, useGecerliPersonel } from '../lib/oturum'
 import { tl } from '../lib/para'
 import {
   bugun,
@@ -38,7 +38,7 @@ const anahtar = (urunId: string, not: string) => `${urunId}|${kucuk(not)}`
 const saat = (z: number) => new Date(z).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
 
 export default function Kasa() {
-  const personel = usePersonel()
+  const personel = useGecerliPersonel('kasa')
   const git = useNavigate()
   const { slug, ad: isletmeAd, logo } = useIsletme()
   const { menu, yukleniyor, hata: menuHata } = useMenu(slug)
@@ -54,6 +54,10 @@ export default function Kasa() {
   const [acik, setAcik] = useState<Acik>(null)
   const [basilacak, setBasilacak] = useState<{ siparis: Siparis; sira: number } | null>(null)
   const [uyari, setUyari] = useState('')
+  const tamamlaniyor = useRef(false)
+
+  /* kasa açıkken cihaz kasa cihazıdır: Ekran seçimi ve Yönetim yeniden şifre ister */
+  useEffect(cihazKilitle, [])
 
   useEffect(() => {
     yaz('session', A_SEPET, sepet.length ? sepet : null)
@@ -68,11 +72,26 @@ export default function Kasa() {
   const yazdir = (siparis: Siparis) => setBasilacak((o) => ({ siparis, sira: (o?.sira ?? 0) + 1 }))
 
   const tukendiKume = useMemo(() => new Set(yerelTukendi), [yerelTukendi])
+  /* Sepet her zaman güncel menüye göre okunur: fiyat ve ad menüden gelir (sepette saklanan fiyata güvenilmez),
+     tükenen ya da menüden kalkan ürün satırı düşer. */
+  const { satirlar, dusenler } = useMemo(() => {
+    if (!menu) return { satirlar: [] as Satir[], dusenler: [] as string[] }
+    const harita = new Map<string, MenuUrun>()
+    for (const k of menu.kategoriler) for (const u of k.urunler) harita.set(u.id, u)
+    const s: Satir[] = []
+    const d: string[] = []
+    for (const x of sepet) {
+      const u = harita.get(x.urunId)
+      if (!u || u.tukendi || tukendiKume.has(u.id)) d.push(x.ad)
+      else s.push({ ...x, ad: u.ad, fiyat: u.fiyat })
+    }
+    return { satirlar: s, dusenler: d }
+  }, [sepet, menu, tukendiKume])
   const adetler = useMemo(() => {
     const m = new Map<string, number>()
-    for (const s of sepet) m.set(s.urunId, (m.get(s.urunId) ?? 0) + s.adet)
+    for (const s of satirlar) m.set(s.urunId, (m.get(s.urunId) ?? 0) + s.adet)
     return m
-  }, [sepet])
+  }, [satirlar])
   const gruplar = useMemo(() => {
     const a = kucuk(arama.trim())
     return (menu?.kategoriler ?? [])
@@ -80,15 +99,13 @@ export default function Kasa() {
       .map((k) => ({ ...k, urunler: a ? k.urunler.filter((u) => kucuk(u.ad).includes(a)) : k.urunler }))
       .filter((k) => k.urunler.length)
   }, [menu, kategori, arama])
-  const bugunku = useMemo(() => {
-    const g = bugun()
-    return siparisler.filter((s) => s.gun === g).sort((x, y) => y.no - x.no)
-  }, [siparisler])
+  const gun = bugun() // gece yarısından sonra liste yeni güne geçer
+  const bugunku = useMemo(() => siparisler.filter((s) => s.gun === gun).sort((x, y) => y.no - x.no), [siparisler, gun])
 
-  if (personel?.ekran !== 'kasa') return <Navigate to="/pin/kasa" replace />
+  if (!personel) return <Navigate to="/pin/kasa" replace />
 
-  const toplam = sepet.reduce((t, s) => t + s.fiyat * s.adet, 0)
-  const urunAdedi = sepet.reduce((t, s) => t + s.adet, 0)
+  const toplam = satirlar.reduce((t, s) => t + s.fiyat * s.adet, 0)
+  const urunAdedi = satirlar.reduce((t, s) => t + s.adet, 0)
   const aktifKategori = kategori === 'tum' || menu?.kategoriler.some((k) => k.id === kategori) ? kategori : 'tum'
 
   const ekle = (u: MenuUrun) => {
@@ -120,7 +137,10 @@ export default function Kasa() {
     setUyari(s.tamam ? '' : s.hata)
   }
   const tamamla = (odeme: Odeme) => {
-    const s = siparisOlustur({ kalemler: sepet.map(({ urunId, ad, fiyat, adet, not }) => ({ urunId, ad, fiyat, adet, not })), tur, odeme, personelAd: personel.ad })
+    /* art arda iki dokunuş tek sipariş oluşturur */
+    if (tamamlaniyor.current || !satirlar.length) return
+    tamamlaniyor.current = true
+    const s = siparisOlustur({ kalemler: satirlar.map(({ urunId, ad, fiyat, adet, not }) => ({ urunId, ad, fiyat, adet, not })), tur, odeme, personelAd: personel.ad })
     if (!s.tamam || !s.siparis) {
       setUyari(s.tamam ? 'Sipariş kaydedilemedi.' : s.hata)
       return setAcik(null)
@@ -133,17 +153,19 @@ export default function Kasa() {
 
   const sepetIcerik = (
     <Sepet
-      satirlar={sepet}
+      satirlar={satirlar}
+      dusenler={dusenler}
+      dusenleriSil={() => setSepet(satirlar)}
       tur={tur}
       turSec={setTur}
       toplam={toplam}
       adetDegistir={adetDegistir}
       notAc={(a) => setAcik({ t: 'not', anahtar: a })}
       bosalt={() => setSepet([])}
-      tamamla={() => setAcik({ t: 'odeme' })}
+      tamamla={() => { tamamlaniyor.current = false; setAcik({ t: 'odeme' }) }}
     />
   )
-  const notSatiri = acik?.t === 'not' ? sepet.find((s) => s.anahtar === acik.anahtar) : undefined
+  const notSatiri = acik?.t === 'not' ? satirlar.find((s) => s.anahtar === acik.anahtar) : undefined
 
   return (
     <div className="flex h-dvh flex-col bg-ink">
@@ -209,7 +231,7 @@ export default function Kasa() {
               </div>
             </div>
             {stokModu && (
-              <p className="mt-2 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-[13px] text-warn">
+              <p className="mt-2 rounded-xl border border-warn/50 bg-ink-2 px-3 py-2 text-[13px] text-warn">
                 <b className="font-semibold">Tükendi işaretleme açık.</b> Ürüne dokununca tükendi olur, yeniden dokununca açılır. Önizlemede bu işaret yalnızca bu cihazda geçerlidir.
               </p>
             )}
@@ -244,7 +266,7 @@ export default function Kasa() {
                         disabled={tukendi && !stokModu}
                         onClick={() => urunDokun(u)}
                         aria-label={`${u.ad}, ${tl(u.fiyat)}${tukendi ? ', tükendi' : ''}`}
-                        className={`relative aspect-[4/3] overflow-hidden rounded-2xl border bg-ink-3 text-left transition active:scale-[0.97] ${adet ? 'border-gold ring-2 ring-gold/40' : 'border-line'}`}
+                        className={`relative aspect-[4/3] overflow-hidden rounded-2xl border bg-[#262523] text-left transition active:scale-[0.97] ${adet ? 'border-gold ring-2 ring-gold/40' : 'border-line'}`}
                       >
                         {u.gorsel && <img src={u.gorsel} alt="" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.hidden = true }} className="absolute inset-0 size-full object-cover" />}
                         <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/5" />
@@ -274,10 +296,10 @@ export default function Kasa() {
 
       {/* telefonda sepet alttaki çubuktan açılır */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-glass px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
-        <button type="button" disabled={!sepet.length} onClick={() => setAcik({ t: 'sepet' })} className={`${BTN_ANA} h-14 w-full justify-between px-5`}>
+        <button type="button" disabled={!satirlar.length && !dusenler.length} onClick={() => setAcik({ t: 'sepet' })} className={`${BTN_ANA} h-14 w-full justify-between px-5`}>
           <span className="flex items-center gap-2">
             <Ikon ad="sepet" className="size-5" />
-            {sepet.length ? `Sepet · ${urunAdedi} ürün` : 'Sepet boş'}
+            {satirlar.length ? `Sepet · ${urunAdedi} ürün` : 'Sepet boş'}
           </span>
           <span className="tabular-nums">{tl(toplam)}</span>
         </button>
@@ -330,6 +352,8 @@ export default function Kasa() {
 
 function Sepet(p: {
   satirlar: Satir[]
+  dusenler: string[]
+  dusenleriSil: () => void
   tur: SiparisTuru
   turSec: (t: SiparisTuru) => void
   toplam: number
@@ -347,6 +371,12 @@ function Sepet(p: {
         )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
+        {p.dusenler.length > 0 && (
+          <div role="alert" className="my-2 flex items-start gap-2 rounded-xl border border-warn/50 bg-ink px-3 py-2 text-[13px] text-warn">
+            <span className="min-w-0 flex-1">Tükendiği ya da menüden kalktığı için sepetten çıkarıldı: <b className="font-semibold">{p.dusenler.join(', ')}</b></span>
+            <button type="button" onClick={p.dusenleriSil} className="-my-1 min-h-11 flex-none rounded-lg px-2 font-semibold underline underline-offset-2">Tamam</button>
+          </div>
+        )}
         {!p.satirlar.length ? (
           <div className="grid h-full min-h-40 place-items-center text-center text-sm text-muted">
             <div>
@@ -453,7 +483,7 @@ function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdi
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-semibold tabular-nums">
                   {tl(s.toplam)}
-                  {s.durum === 'iptal' && <span className="ml-2 rounded-full bg-danger/15 px-2 py-0.5 text-xs text-danger">İptal</span>}
+                  {s.durum === 'iptal' && <span className="ml-2 rounded-full border border-danger/50 px-2 py-0.5 text-xs text-danger">İptal</span>}
                 </p>
                 <p className="truncate text-xs text-muted">{saat(s.zaman)} · {TUR_ADI[s.tur]} · {ODEME_ADI[s.odeme]} · {s.kalemler.reduce((t, k) => t + k.adet, 0)} ürün</p>
               </div>
@@ -471,7 +501,7 @@ function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdi
               <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
                 <span className="min-w-0 flex-1 text-[13px]">{s.no} numaralı sipariş iptal edilsin mi?</span>
                 <button type="button" onClick={() => setIptalSor(null)} className={`${BTN_IKINCIL} h-11`}>Vazgeç</button>
-                <button type="button" onClick={() => { siparisDurumu(s.id, 'iptal'); setIptalSor(null) }} className="inline-flex h-11 items-center rounded-[10px] bg-danger px-4 text-[15px] font-semibold text-white">İptal et</button>
+                <button type="button" onClick={() => { siparisDurumu(s.id, 'iptal'); setIptalSor(null) }} className="inline-flex h-11 items-center rounded-[10px] bg-danger px-4 text-[15px] font-semibold text-on-danger">İptal et</button>
               </div>
             )}
           </li>

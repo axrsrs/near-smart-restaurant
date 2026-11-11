@@ -53,6 +53,23 @@ açıkken sesli ve ekranda uyarı verilir.
 - `npm run yayinla` → derler, `dist/` klasörünü tek Worker dosyasına paketler ve Cloudflare'e yükler.
 - Tek dosyalık sürüm: `npm run build:tek` → `dist-tek/near-smart-restaurant.html`
 
+## Testler
+
+`testler/` klasöründeki iki betik yayındaki siteyi gerçek tarayıcıyla sınar (Playwright gerekir):
+
+- `node testler/e2e.cjs` → işletme sahibi, kasiyer, müşteri ve güvenlik senaryoları (75 kontrol).
+- `node testler/tarama.cjs` → 320–1366 px arası 6 genişlikte taşma, dokunma alanı, erişilebilirlik ve hız taraması.
+- Başka adresi sınamak için: `U=http://localhost:4173 node testler/e2e.cjs`
+
+## Güvenlik notları
+
+- Önizlemede giriş, PIN ve kilitler tarayıcıda denetlenir; tarayıcı kayıtlarına erişebilen biri aşabilir.
+  Gerçek koruma sunucu bağlandığında gelir: kimlik doğrulama, PIN denetimi, deneme sınırı ve sipariş
+  tutarının hesabı sunucuda yapılacak.
+- Cihaz kasa / mutfak / TV ekranına geçtiğinde Ekran seçimi ve Yönetim kilitlenir; yönetici şifresi sorulur.
+- Sepetteki fiyat menüden okunur; sepette saklanan fiyata güvenilmez.
+- Yayın başlıkları: CSP (yalnızca kendi kodu ve NearMenu sunucusu), HSTS, nosniff, frame-ancestors none, noindex.
+
 ## Tema
 
 Renkler `src/index.css` içindeki `@theme` bloğunda tanımlıdır (Tailwind v4). Zemin NEAR mono (krem / siyah),

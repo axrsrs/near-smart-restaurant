@@ -43,7 +43,7 @@ export default function Personel() {
                   {p.yetkiler.map((y) => (
                     <span key={y} className="rounded-full bg-soft px-2 py-0.5 text-gold">{YETKI_ADI[y]}</span>
                   ))}
-                  {!p.aktif && <span className="rounded-full bg-warn/15 px-2 py-0.5 text-warn">Giriş kapalı</span>}
+                  {!p.aktif && <span className="rounded-full border border-warn/50 px-2 py-0.5 text-warn">Giriş kapalı</span>}
                 </p>
               </div>
               <Anahtar acik={p.aktif} degistir={(v) => personelAktif(p.id, v)} etiket={p.aktif ? `${p.ad}: girişi kapat` : `${p.ad}: girişi aç`} />

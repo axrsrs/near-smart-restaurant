@@ -18,6 +18,7 @@
   --color-ok: #1f8a5b;
   --color-warn: #b45309;
   --color-danger: #c2410c;
+  --color-on-danger: #ffffff; /* tehlike düğmesi üstündeki yazı */
   --color-glass: rgb(250 249 246 / 0.9);
 }
 
@@ -35,6 +36,7 @@
   --color-ok: #4cc38a;
   --color-warn: #e39a4a;
   --color-danger: #f0764a;
+  --color-on-danger: #1c0a03;
   --color-glass: rgb(12 12 11 / 0.86);
   color-scheme: dark;
 }

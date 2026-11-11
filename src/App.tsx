@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { ekranYolu, useCihaz, useOturum } from './lib/oturum'
+import YoneticiKilidi from './components/YoneticiKilidi'
+import { ekranYolu, useCihaz, useOturum, useYoneticiAcik } from './lib/oturum'
 import EkranBekliyor from './pages/EkranBekliyor'
 import EkranSecimi from './pages/EkranSecimi'
 import Giris from './pages/Giris'
@@ -14,6 +15,14 @@ import Personel from './pages/yonetim/Personel'
 
 function Korumali({ children }: { children: ReactNode }) {
   return useOturum() ? children : <Navigate to="/giris" replace />
+}
+
+/** Ekran seçimi ve Yönetim: giriş yetmez; cihaz kasa/mutfak/TV'ye geçtiyse yönetici şifresi yeniden sorulur. */
+function Yonetici({ children }: { children: ReactNode }) {
+  const oturum = useOturum()
+  const acik = useYoneticiAcik()
+  if (!oturum) return <Navigate to="/giris" replace />
+  return acik ? children : <YoneticiKilidi />
 }
 
 /** Açılış: giriş yoksa girişe, cihaz seçilmişse doğrudan o ekrana, değilse ekran seçimine. */
@@ -33,13 +42,13 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Acilis />} />
         <Route path="/giris" element={<Giris />} />
-        <Route path="/ekran" element={<Korumali><EkranSecimi /></Korumali>} />
+        <Route path="/ekran" element={<Yonetici><EkranSecimi /></Yonetici>} />
         <Route path="/pin/:ekran" element={<PinGiris />} />
         <Route path="/kasa" element={<Korumali><Kasa /></Korumali>} />
         <Route path="/t/:kod" element={<Takip />} />
         <Route path="/mutfak" element={<Korumali><EkranBekliyor ekran="mutfak" /></Korumali>} />
         <Route path="/tv" element={<Korumali><EkranBekliyor ekran="tv" /></Korumali>} />
-        <Route path="/yonetim" element={<Korumali><Yonetim /></Korumali>}>
+        <Route path="/yonetim" element={<Yonetici><Yonetim /></Yonetici>}>
           <Route index element={<Navigate to="personel" replace />} />
           <Route path="personel" element={<Personel />} />
           <Route path="isletme" element={<Isletme />} />

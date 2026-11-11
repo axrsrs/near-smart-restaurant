@@ -54,7 +54,8 @@ export default {
     let yol = new URL(istek.url).pathname;
     /* dosya değilse tek sayfa uygulamasının girişi döner (ör. /kasa, /t/kod) */
     if (!DOSYA[yol]) {
-      if (yol.startsWith("/assets/")) return new Response("Bulunamadı", { status: 404, headers: BASLIK });
+      const son = yol.slice(yol.lastIndexOf("/") + 1);
+      if (yol.startsWith("/assets/") || son.startsWith(".") || son.includes(".") || yol.includes("/.")) return new Response("Bulunamadı", { status: 404, headers: BASLIK });
       yol = "/index.html";
     }
     const h = new Headers(BASLIK);

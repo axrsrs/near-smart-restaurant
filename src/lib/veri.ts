@@ -142,8 +142,9 @@ export const siparisDurumu = (id: string, durum: SiparisDurumu) =>
 export const otomatikFisAyarla = (acik: boolean) => kaydet({ ...veri, otomatikFis: acik })
 
 /* ── personel ── PIN düz yazı olarak saklanmaz; yalnızca özeti tutulur. */
-async function pinOzeti(pin: string): Promise<string> {
-  const metin = `${veri.tuz}:${pin}`
+/** Cihaza özgü tuzla özet üretir; PIN ve yönetici şifresi düz yazı olarak saklanmaz. */
+export async function ozetle(deger: string): Promise<string> {
+  const metin = `${veri.tuz}:${deger}`
   if (typeof crypto !== 'undefined' && crypto.subtle) {
     const bayt = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(metin))
     return Array.from(new Uint8Array(bayt), (b) => b.toString(16).padStart(2, '0')).join('')
@@ -169,7 +170,7 @@ export async function personelKaydet(p: { id?: string; ad: string; yetkiler: Yet
   let pinOzet = mevcut?.pinOzet ?? ''
   if (p.pin || !mevcut) {
     if (!/^\d{4}$/.test(p.pin)) return hata('PIN 4 haneli bir sayı olmalı.')
-    pinOzet = await pinOzeti(p.pin)
+    pinOzet = await ozetle(p.pin)
     if (veri.personel.some((x) => x.id !== p.id && x.pinOzet === pinOzet)) return hata('Bu PIN başka bir personelde kullanılıyor. Farklı bir PIN seçin.')
   }
   if (!mevcut && veri.personel.length >= 200) return hata('En fazla 200 personel eklenebilir.')
@@ -185,7 +186,7 @@ export const personelSil = (id: string) => kaydet({ ...veri, personel: veri.pers
 
 /** PIN'i ve ekran yetkisini denetler; eşleşen aktif personeli döndürür. */
 export async function personelBul(pin: string, yetki: Yetki): Promise<PersonelKaydi | null> {
-  const ozet = await pinOzeti(pin)
+  const ozet = await ozetle(pin)
   return veri.personel.find((p) => p.aktif && p.yetkiler.includes(yetki) && p.pinOzet === ozet) ?? null
 }
 
