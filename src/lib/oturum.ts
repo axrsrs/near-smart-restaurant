@@ -2,6 +2,7 @@
    · Yönetici: işletme sahibi e-posta ve şifreyle girer (Supabase Auth). Personeli ve cihazları yönetir.
    · Cihaz: kasa / mutfak / TV olarak tanıtılan tablet. Kendi anahtarıyla çalışır; yönetici oturumunu taşımaz.
      Kasa ve mutfakta personel 4 haneli PIN ile oturum açar; PIN ve deneme sınırı sunucuda denetlenir. */
+import { dogrulamaAl } from './dogrula'
 import { useSyncExternalStore } from 'react'
 import { oku, yaz } from './depo'
 import { cagir, hataMetni, sunucu, SunucuHatasi } from './sunucu'
@@ -93,7 +94,7 @@ export async function girisYap(eposta: string, sifre: string): Promise<Sonuc> {
   const ULASILAMADI = 'Sunucuya ulaşılamadı. İnternet bağlantısını denetleyin.'
   let kapi: Kapi | null = null
   try {
-    const r = await sunucu.functions.invoke<Kapi>('tetra-giris', { body: { eposta: e, sifre } })
+    const r = await sunucu.functions.invoke<Kapi>('tetra-giris', { body: { eposta: e, sifre, dogrulama: await dogrulamaAl() } })
     kapi = r.data ?? null
   } catch {
     kapi = null
@@ -104,6 +105,7 @@ export async function girisYap(eposta: string, sifre: string): Promise<Sonuc> {
       const dk = Math.max(1, Math.ceil((kapi.kilit ?? 900) / 60))
       return { tamam: false, hata: `Çok fazla hatalı deneme yapıldı. Hesap güvenlik için kilitlendi; ${dk} dakika sonra yeniden deneyin.` }
     }
+    if (kapi.neden === 'dogrulama') return { tamam: false, hata: 'Güvenlik doğrulaması tamamlanamadı. Sayfayı yenileyip yeniden deneyin.' }
     if (kapi.neden === 'yogun') return { tamam: false, hata: 'Çok fazla deneme yapıldı. Biraz bekleyip yeniden deneyin.' }
     if (kapi.neden === 'hatali') {
       const k = kapi.kalan

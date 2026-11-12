@@ -1,5 +1,5 @@
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self'; img-src 'self' data: https:; connect-src 'self' https://rfwgjzkewtjpdcvrhepg.supabase.co wss://rfwgjzkewtjpdcvrhepg.supabase.co; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self'; img-src 'self' data: https:; connect-src 'self' https://rfwgjzkewtjpdcvrhepg.supabase.co wss://rfwgjzkewtjpdcvrhepg.supabase.co; worker-src 'self'; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Robots-Tag: noindex, nofollow

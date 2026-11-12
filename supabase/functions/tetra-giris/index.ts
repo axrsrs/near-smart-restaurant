@@ -1,5 +1,5 @@
 // Tetra · yönetici girişi kapısı (Supabase Edge Function)
-// Tarayıcı e-posta ve şifreyi buraya gönderir: { eposta, sifre }.
+// Tarayıcı e-posta ve şifreyi buraya gönderir: { eposta, sifre, dogrulama? } (dogrulama: Turnstile kodu; Supabase denetler).
 // Kural: aynı e-posta için 15 dakika içinde 5 hatalı deneme → hesap 15 dakika kilitlenir (doğru şifre de kabul edilmez).
 // Sayaç veritabanında tutulur (tetra_giris_kilit / tetra_giris_sonuc yalnızca service_role ile çağrılabilir);
 // e-posta düz yazı olarak saklanmaz, özeti saklanır. Şifre hiçbir yere yazılmaz, günlüğe düşmez.
@@ -24,7 +24,7 @@ Deno.serve(async (istek) => {
   if (istek.method === 'OPTIONS') return new Response(null, { status: 204, headers: basliklar(kaynak) })
   if (istek.method !== 'POST') return yanit({ tamam: false, neden: 'gecersiz' }, 405, kaynak)
 
-  let govde: { eposta?: unknown; sifre?: unknown }
+  let govde: { eposta?: unknown; sifre?: unknown; dogrulama?: unknown }
   try {
     govde = await istek.json()
   } catch {
@@ -32,6 +32,7 @@ Deno.serve(async (istek) => {
   }
   const eposta = typeof govde.eposta === 'string' ? govde.eposta.trim().toLowerCase() : ''
   const sifre = typeof govde.sifre === 'string' ? govde.sifre : ''
+  const dogrulama = typeof govde.dogrulama === 'string' && govde.dogrulama.length <= 4096 ? govde.dogrulama : undefined
   if (!EPOSTA.test(eposta) || eposta.length > 254 || sifre.length < 8 || sifre.length > 128) return yanit({ tamam: false, neden: 'gecersiz' }, 400, kaynak)
 
   const adres = Deno.env.get('SUPABASE_URL')!
@@ -42,10 +43,12 @@ Deno.serve(async (istek) => {
   if ((kilit.data as number) > 0) return yanit({ tamam: false, neden: 'kilit', kilit: kilit.data }, 200, kaynak)
 
   const kimlik = createClient(adres, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } })
-  const giris = await kimlik.auth.signInWithPassword({ email: eposta, password: sifre })
+  const giris = await kimlik.auth.signInWithPassword({ email: eposta, password: sifre, options: dogrulama ? { captchaToken: dogrulama } : undefined })
 
   if (giris.error || !giris.data.session) {
     const durum = giris.error?.status ?? 0
+    // Güvenlik doğrulaması geçmediyse şifre hiç denenmemiştir; hak düşmez.
+    if (giris.error?.code === 'captcha_failed' || /captcha/i.test(giris.error?.message ?? '')) return yanit({ tamam: false, neden: 'dogrulama' }, 200, kaynak)
     // Yalnızca "bilgiler hatalı" yanıtı sayaca yazılır; sunucu arızası ya da hız sınırı kullanıcının hakkından düşmez.
     if (durum !== 400) return yanit({ tamam: false, neden: durum === 429 ? 'yogun' : 'sunucu' }, 200, kaynak)
     const s = await db.rpc('tetra_giris_sonuc', { p_eposta: eposta, p_basarili: false })
