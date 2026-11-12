@@ -13,6 +13,7 @@ import Tv from './pages/Tv'
 import Yonetim from './pages/Yonetim'
 import Cihazlar from './pages/yonetim/Cihazlar'
 import Isletme_ from './pages/yonetim/Isletme'
+import Menu from './pages/yonetim/Menu'
 import Personel from './pages/yonetim/Personel'
 import Raporlar from './pages/yonetim/Raporlar'
 
@@ -76,6 +77,7 @@ export default function App() {
           <Route index element={<Navigate to="personel" replace />} />
           <Route path="personel" element={<Personel />} />
           <Route path="cihazlar" element={<Cihazlar />} />
+          <Route path="menu" element={<Menu />} />
           <Route path="raporlar" element={<Raporlar />} />
           <Route path="isletme" element={<Isletme_ />} />
         </Route>

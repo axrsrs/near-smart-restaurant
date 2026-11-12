@@ -33,7 +33,7 @@ export function useCanli(kanal: string, geriCagri: (konu: Konu) => void, onek = 
 }
 
 /** Düzenli tazeleme: canlı bağlantı varken seyrek (güvence), yokken sık; ekrana geri dönüldüğünde hemen. */
-export function useTazele(is: () => void, bagli: boolean, sikMs = 15_000, seyrekMs = 120_000) {
+export function useTazele(is: () => void, bagli: boolean, sikMs = 15_000, seyrekMs = 600_000) {
   const ref = useRef(is)
   useEffect(() => {
     ref.current = is

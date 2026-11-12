@@ -15,7 +15,7 @@ type HamUrun = { id?: unknown; name?: unknown; description?: unknown; price?: un
 type HamKategori = { id?: unknown; name?: unknown; items?: unknown }
 type HamMenu = { restaurant?: { id?: unknown; name?: unknown; logo?: unknown }; categories?: unknown } | null
 
-const YENILEME_ARALIGI = 120_000
+const YENILEME_ARALIGI = 300_000 // sürüm damgası 5 dakikada bir sorulur (birkaç bayt); menü yalnızca değişince iner
 const yazi = (v: unknown, enCok: number) => (typeof v === 'string' ? v.trim().slice(0, enCok) : '')
 const guvenliGorsel = (v: unknown) => (typeof v === 'string' && /^https:\/\//.test(v) ? v : '')
 
@@ -30,7 +30,7 @@ function cevir(slug: string, surum: string, ham: HamMenu): Menu | null {
       if (!u || typeof u.id !== 'string' || !Number.isFinite(fiyat) || fiyat < 0) continue
       urunler.push({ id: u.id, ad: yazi(u.name, 120), aciklama: yazi(u.description, 300), fiyat, gorsel: guvenliGorsel(u.image), tukendi: u.sold === true })
     }
-    if (urunler.length) kategoriler.push({ id: k.id, ad: yazi(k.name, 80), urunler })
+    kategoriler.push({ id: k.id, ad: yazi(k.name, 80), urunler })
   }
   return {
     slug,

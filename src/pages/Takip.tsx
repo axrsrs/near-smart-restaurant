@@ -46,7 +46,7 @@ export default function Takip() {
       if (!document.hidden) sorRef.current()
     }
     calis()
-    const sayac = setInterval(calis, bagli ? 30_000 : 5000)
+    const sayac = setInterval(calis, bagli ? 120_000 : 5000)
     document.addEventListener('visibilitychange', calis)
     return () => {
       clearInterval(sayac)

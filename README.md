@@ -20,7 +20,8 @@ NEAR tek platformdur; işletmeye iki paketten biri açılır:
 | Tetra: Kasa, Mutfak, TV, QR sipariş takibi (bu proje) | – | ✓ |
 
 - Tek veritabanı (NearMenu'nün Supabase projesi), tek işletme kaydı, tek giriş.
-- Tek ürün listesi: ürün, fiyat ve fotoğraf NearMenu'de girilir; kasa aynı kaydı okur (`src/lib/menu.ts`).
+- Tek ürün listesi: ürün, fiyat ve fotoğraf NearMenu'deki kayıttır; kasa aynı kaydı okur (`src/lib/menu.ts`).
+  Tetra'dan hızlı düzenleme yapılabilir (`src/lib/menuDuzenle.ts`); fotoğraf, açıklama ve ayrıntılar NearMenu panelinde kalır.
   Kasadan yalnızca "tükendi" işaretlenir.
 - Paketi yalnızca NEAR açar ve kapatır: NearMenu süper panelinde işletmeyi düzenlerken "Tetra" alanından.
 - Sisteme özel veriler (personel ve PIN, siparişler) ayrı tablolarda durur; NearMenu tabloları değişmez.
@@ -33,6 +34,7 @@ NEAR tek platformdur; işletmeye iki paketten biri açılır:
 | `/ekran` | Yönetici | Bu cihazı Kasa / Mutfak / TV olarak tanıt ya da Yönetim'e geç |
 | `/yonetim/personel` | Yönetici | Personel, ekran yetkileri, PIN |
 | `/yonetim/cihazlar` | Yönetici | Tanıtılmış cihazlar, kaldırma |
+| `/yonetim/menu` | Yönetici | Hızlı menü düzenleme: ad, fiyat, tükendi, ürün ve kategori ekleme (çeviri kendiliğinden) |
 | `/yonetim/raporlar` | Yönetici | Ciro, nakit/kart, günlük döküm, en çok satanlar |
 | `/yonetim/isletme` | Yönetici | İşletme ve NearMenu bağlantısı |
 | `/kasa` | Kasa cihazı | PIN, ürünler, sepet, not, Burada/Paket, Nakit/Kart, sıra numarası, fiş, QR |
@@ -69,6 +71,16 @@ toplanmaz. iPhone, ana ekrana eklenmemiş sayfalara bildirim izni vermez; orada 
 Raporlar: 90 günden eski siparişler günlük özete dönüşür (`tetra_gun_ozet`), ayrıntıları silinir; raporlar
 özeti ve güncel siparişleri birlikte okur.
 
+## Trafik
+
+Sunucuya giden istek ve veri bilerek az tutulur:
+
+- Menü: 5 dakikada bir yalnızca sürüm damgası sorulur (27 bayt); menü ancak değişince iner.
+- Kasa, mutfak, TV: değişiklikler canlı kanaldan haber olarak gelir; güvence sorgusu 10 dakikada birdir. Bağlantı koparsa 15 saniyeye iner.
+- Müşteri takibi: canlı kanal; güvence sorgusu 2 dakikada bir, bağlantı yoksa 5 saniyede bir.
+- Menü düzenleme: yalnızca değişen alan gönderilir; çeviri yalnızca adı değişen kayıt için istenir.
+- Statik dosyalar ve sesler tarayıcıda önbelleğe alınır; Worker günlük tutmaz.
+
 ## Yayın
 
 - Adres: https://tetra.neardiji.com (arama motorlarına kapalı)
@@ -83,6 +95,8 @@ Testler deneme işletmesinde (`tetra-test`) koşar; hesabın bilgileri ortam de�
 TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/api.mjs    # sunucu işlevleri: 65 kontrol
 TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/e2e.cjs    # gerçek tarayıcıyla uçtan uca: 56 kontrol
 TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/canli.cjs  # kasa → mutfak → TV → müşteri, dört cihazla: 24 kontrol
+TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/yeni.cjs   # anlık takip, bildirim zinciri, rapor: 28 kontrol
+TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/menu.cjs   # menü düzenleme ve çeviri: 16 kontrol
 ```
 
 Tarayıcı testleri Playwright ister; başka adresi sınamak için başına `U=http://localhost:4173` eklenir.

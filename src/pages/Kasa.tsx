@@ -217,7 +217,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
             </label>
             <div className="-mx-3 mt-2 overflow-x-auto px-3 sm:-mx-4 sm:px-4" role="group" aria-label="Kategoriler">
               <div className="flex w-max gap-2">
-                {[{ id: 'tum', ad: 'Tümü' }, ...(menu?.kategoriler ?? [])].map((k) => (
+                {[{ id: 'tum', ad: 'Tümü' }, ...(menu?.kategoriler ?? []).filter((k) => k.urunler.length)].map((k) => (
                   <button
                     key={k.id}
                     type="button"

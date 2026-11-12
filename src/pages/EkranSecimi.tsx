@@ -10,7 +10,7 @@ const ACIKLAMA: Record<Ekran, string> = {
   kasa: 'Bu cihazı kasa yap: sipariş al, fiş yazdır',
   mutfak: 'Bu cihazı mutfak ekranı yap: siparişleri hazırla',
   tv: 'Bu cihazı TV ekranı yap: hazır numaraları göster',
-  yonetim: 'Personel, PIN kodları, cihazlar, raporlar',
+  yonetim: 'Personel, cihazlar, menü, raporlar',
 }
 
 export default function EkranSecimi() {
