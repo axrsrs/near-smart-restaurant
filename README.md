@@ -97,6 +97,7 @@ TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/e2e.cjs    # gerçek tar
 TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/canli.cjs  # kasa → mutfak → TV → müşteri, dört cihazla: 24 kontrol
 TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/yeni.cjs   # anlık takip, bildirim zinciri, rapor: 28 kontrol
 TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/menu.cjs   # menü düzenleme ve çeviri: 16 kontrol
+TETRA_TEST_EPOSTA=... TETRA_TEST_SIFRE=... node testler/guvenlik.mjs # yetki, kiracılar arası erişim, enjeksiyon, kaba kuvvet, yarış durumu: 70 kontrol
 ```
 
 Tarayıcı testleri Playwright ister; başka adresi sınamak için başına `U=http://localhost:4173` eklenir.
