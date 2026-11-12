@@ -98,7 +98,7 @@ export default function Menu() {
                   degistir={async (satista) => {
                     if (mesgul) return
                     setMesgul(u.id)
-                    const s = await urunTukendi(isletme.slug, u.id, !satista)
+                    const s = await urunTukendi(isletme.slug, isletme.id, u.id, !satista)
                     setIslemHata(s.tamam ? '' : s.hata)
                     setMesgul(null)
                   }}
@@ -116,7 +116,7 @@ export default function Menu() {
       ))}
 
       {form && <UrunFormu slug={isletme.slug} isletme={isletme.id} secili={form.secili} kategoriler={kategoriler} varsayilan={aktif === 'tum' ? '' : aktif} kapat={() => setForm(null)} />}
-      {katForm && <KategoriFormu slug={isletme.slug} kategori={katForm} kapat={() => setKatForm(null)} />}
+      {katForm && <KategoriFormu slug={isletme.slug} isletme={isletme.id} kategori={katForm} kapat={() => setKatForm(null)} />}
       {silinecek && (
         <Onay
           baslik="Ürün silinsin mi?"
@@ -125,7 +125,7 @@ export default function Menu() {
           onayla={async () => {
             const hedef = silinecek
             setSilinecek(null)
-            const s = await urunSil(isletme.slug, hedef.id)
+            const s = await urunSil(isletme.slug, isletme.id, hedef.id)
             setIslemHata(s.tamam ? '' : s.hata)
           }}
           kapat={() => setSilinecek(null)}
@@ -165,7 +165,7 @@ function UrunFormu({ slug, isletme, secili, kategoriler, varsayilan, kapat }: { 
       }
     }
     const s = secili
-      ? await urunGuncelle(slug, secili.urun.id, { ad: secili.urun.ad, fiyat: secili.urun.fiyat, kategoriId: secili.kategoriId }, { ad, fiyat: kurus, kategoriId: kId })
+      ? await urunGuncelle(slug, isletme, secili.urun.id, { ad: secili.urun.ad, fiyat: secili.urun.fiyat, kategoriId: secili.kategoriId }, { ad, fiyat: kurus, kategoriId: kId })
       : await urunEkle(slug, isletme, { ad, kategoriId: kId, fiyat: kurus, sira: kategoriler.find((k) => k.id === kId)?.urunler.length ?? 0 })
     setBekle(false)
     if (s.tamam) kapat()
@@ -204,7 +204,7 @@ function UrunFormu({ slug, isletme, secili, kategoriler, varsayilan, kapat }: { 
   )
 }
 
-function KategoriFormu({ slug, kategori, kapat }: { slug: string; kategori: MenuKategori; kapat: () => void }) {
+function KategoriFormu({ slug, isletme, kategori, kapat }: { slug: string; isletme: string; kategori: MenuKategori; kapat: () => void }) {
   const [ad, setAd] = useState(kategori.ad)
   const [hata, setHata] = useState('')
   const [bekle, setBekle] = useState(false)
@@ -218,7 +218,7 @@ function KategoriFormu({ slug, kategori, kapat }: { slug: string; kategori: Menu
           if (bekle) return
           if (ad.trim() === kategori.ad) return kapat()
           setBekle(true)
-          const s = await kategoriAdDegistir(slug, kategori.id, ad)
+          const s = await kategoriAdDegistir(slug, isletme, kategori.id, ad)
           setBekle(false)
           if (s.tamam) kapat()
           else setHata(s.hata)

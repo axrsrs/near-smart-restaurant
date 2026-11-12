@@ -28,8 +28,13 @@ async function cevir(metin: string): Promise<Record<string, string>> {
   return adlar
 }
 
-async function bitir(slug: string, hata: unknown): Promise<Sonuc> {
+/* değişiklikten sonra: bu ekranın menüsü yenilenir ve cihazlara "menü değişti" haberi gider (kasa beklemeden günceller) */
+async function bitir(slug: string, isletme: string, hata: unknown): Promise<Sonuc> {
   if (hata) return { tamam: false, hata: HATA }
+  void sunucu.rpc('tetra_menu_duyur', { p_restaurant: isletme }).then(
+    () => {},
+    () => {},
+  ) // haber gidemese de kayıt tamamdır; cihazlar en geç 5 dakikada kendiliğinden yeniler
   await menuYukle(slug, true)
   return { tamam: true }
 }
@@ -40,11 +45,11 @@ export async function urunEkle(slug: string, isletme: string, u: { ad: string; k
   const h = adDenetle(ad, 60, 'Ürün adı')
   if (h) return { tamam: false, hata: h }
   const { error } = await sunucu.from('products').insert({ restaurant_id: isletme, category_id: u.kategoriId, name: ad, names: await cevir(ad), price: u.fiyat / 100, sort: u.sira })
-  return bitir(slug, error)
+  return bitir(slug, isletme, error)
 }
 
 /** Yalnızca değişen alanlar gönderilir; çeviri yalnızca ad değiştiyse istenir. */
-export async function urunGuncelle(slug: string, id: string, eski: { ad: string; fiyat: number; kategoriId: string }, yeni: { ad: string; fiyat: number; kategoriId: string }): Promise<Sonuc> {
+export async function urunGuncelle(slug: string, isletme: string, id: string, eski: { ad: string; fiyat: number; kategoriId: string }, yeni: { ad: string; fiyat: number; kategoriId: string }): Promise<Sonuc> {
   const ad = duz(yeni.ad)
   const h = adDenetle(ad, 60, 'Ürün adı')
   if (h) return { tamam: false, hata: h }
@@ -57,17 +62,17 @@ export async function urunGuncelle(slug: string, id: string, eski: { ad: string;
   if (yeni.kategoriId !== eski.kategoriId) degisen.category_id = yeni.kategoriId
   if (!Object.keys(degisen).length) return { tamam: true }
   const { error } = await sunucu.from('products').update(degisen).eq('id', id)
-  return bitir(slug, error)
+  return bitir(slug, isletme, error)
 }
 
-export async function urunTukendi(slug: string, id: string, tukendi: boolean): Promise<Sonuc> {
+export async function urunTukendi(slug: string, isletme: string, id: string, tukendi: boolean): Promise<Sonuc> {
   const { error } = await sunucu.from('products').update({ sold: tukendi }).eq('id', id)
-  return bitir(slug, error)
+  return bitir(slug, isletme, error)
 }
 
-export async function urunSil(slug: string, id: string): Promise<Sonuc> {
+export async function urunSil(slug: string, isletme: string, id: string): Promise<Sonuc> {
   const { error } = await sunucu.from('products').delete().eq('id', id)
-  return bitir(slug, error)
+  return bitir(slug, isletme, error)
 }
 
 export async function kategoriEkle(slug: string, isletme: string, adHam: string, sira: number): Promise<Sonuc & { id?: string }> {
@@ -75,14 +80,14 @@ export async function kategoriEkle(slug: string, isletme: string, adHam: string,
   const h = adDenetle(ad, 40, 'Kategori adı')
   if (h) return { tamam: false, hata: h }
   const { data, error } = await sunucu.from('categories').insert({ restaurant_id: isletme, name: ad, names: await cevir(ad), sort: sira }).select('id').single()
-  const s = await bitir(slug, error)
+  const s = await bitir(slug, isletme, error)
   return s.tamam ? { tamam: true, id: (data as { id: string } | null)?.id } : s
 }
 
-export async function kategoriAdDegistir(slug: string, id: string, adHam: string): Promise<Sonuc> {
+export async function kategoriAdDegistir(slug: string, isletme: string, id: string, adHam: string): Promise<Sonuc> {
   const ad = duz(adHam)
   const h = adDenetle(ad, 40, 'Kategori adı')
   if (h) return { tamam: false, hata: h }
   const { error } = await sunucu.from('categories').update({ name: ad, names: await cevir(ad) }).eq('id', id)
-  return bitir(slug, error)
+  return bitir(slug, isletme, error)
 }
