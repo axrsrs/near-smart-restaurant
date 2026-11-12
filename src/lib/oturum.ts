@@ -88,18 +88,37 @@ export async function girisYap(eposta: string, sifre: string): Promise<Sonuc> {
   const e = eposta.trim().toLowerCase()
   if (!EPOSTA.test(e) || e.length > 254) return { tamam: false, hata: 'Geçerli bir e-posta adresi yazın.' }
   if (sifre.length < 8 || sifre.length > 128) return { tamam: false, hata: 'Şifre en az 8 karakter olmalı.' }
+  // Giriş, sunucudaki "tetra-giris" kapısından geçer: 15 dakikada 5 hatalı deneme hesabı 15 dakika kilitler.
+  type Kapi = { tamam: boolean; neden?: string; kalan?: number; kilit?: number; oturum?: { access_token: string; refresh_token: string } }
+  const ULASILAMADI = 'Sunucuya ulaşılamadı. İnternet bağlantısını denetleyin.'
+  let kapi: Kapi | null = null
+  try {
+    const r = await sunucu.functions.invoke<Kapi>('tetra-giris', { body: { eposta: e, sifre } })
+    kapi = r.data ?? null
+  } catch {
+    kapi = null
+  }
+  if (!kapi) return { tamam: false, hata: ULASILAMADI }
+  if (!kapi.tamam || !kapi.oturum) {
+    if (kapi.neden === 'kilit') {
+      const dk = Math.max(1, Math.ceil((kapi.kilit ?? 900) / 60))
+      return { tamam: false, hata: `Çok fazla hatalı deneme yapıldı. Hesap güvenlik için kilitlendi; ${dk} dakika sonra yeniden deneyin.` }
+    }
+    if (kapi.neden === 'yogun') return { tamam: false, hata: 'Çok fazla deneme yapıldı. Biraz bekleyip yeniden deneyin.' }
+    if (kapi.neden === 'hatali') {
+      const k = kapi.kalan
+      return { tamam: false, hata: typeof k === 'number' && k <= 3 ? `E-posta ya da şifre hatalı. ${k} deneme hakkınız kaldı.` : 'E-posta ya da şifre hatalı.' }
+    }
+    if (kapi.neden === 'gecersiz') return { tamam: false, hata: 'E-posta ya da şifre hatalı.' }
+    return { tamam: false, hata: ULASILAMADI }
+  }
   let yanit
   try {
-    yanit = await sunucu.auth.signInWithPassword({ email: e, password: sifre })
+    yanit = await sunucu.auth.setSession(kapi.oturum)
   } catch {
-    return { tamam: false, hata: 'Sunucuya ulaşılamadı. İnternet bağlantısını denetleyin.' }
+    return { tamam: false, hata: ULASILAMADI }
   }
-  if (yanit.error || !yanit.data.session) {
-    const durum = yanit.error?.status ?? 0
-    if (durum === 429) return { tamam: false, hata: 'Çok fazla deneme yapıldı. Biraz bekleyip yeniden deneyin.' }
-    if (durum === 0 || durum >= 500) return { tamam: false, hata: 'Sunucuya ulaşılamadı. İnternet bağlantısını denetleyin.' }
-    return { tamam: false, hata: 'E-posta ya da şifre hatalı.' }
-  }
+  if (yanit.error || !yanit.data.session) return { tamam: false, hata: ULASILAMADI }
   if (yanit.data.user?.user_metadata?.must_change_password === true) {
     await sunucu.auth.signOut({ scope: 'local' })
     return { tamam: false, hata: 'İlk girişte geçici şifreni değiştirmen gerekiyor. Önce NearMenu panelinden şifreni belirle.' }
