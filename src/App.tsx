@@ -1,3 +1,4 @@
+import { useUygulama } from './lib/uygulama'
 import type { ReactNode } from 'react'
 import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { BTN_ANA, BTN_IKINCIL } from './components/bicim'
@@ -64,11 +65,17 @@ function Acilis() {
 }
 
 /* Tek dosyalık sürüm (npm run build:tek) adres çubuğu olmadan da çalışsın diye yolu bellekte tutar. */
+function UygulamaAyari() {
+  useUygulama()
+  return null
+}
+
 const Yonlendirici = import.meta.env.VITE_TEK_DOSYA ? MemoryRouter : BrowserRouter
 
 export default function App() {
   return (
     <Yonlendirici>
+      <UygulamaAyari />
       <Routes>
         <Route path="/" element={<Acilis />} />
         <Route path="/giris" element={<Giris />} />

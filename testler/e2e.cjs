@@ -51,6 +51,8 @@ const chk = (ad, ok, d = '') => { sonuc.push(ok); console.log((ok ? 'GECTI ' : '
   chk('S14 çok kısa cihaz adı reddedilir', (await dlg(p).locator('[role=alert]').textContent()).includes('2–40'));
   await p.fill('#cihaz-ad', 'Kasa 1'); await dlg(p).locator('button[type=submit]').click(); await p.waitForURL('**/kasa'); await p.waitForSelector('text=Personel girişi');
   chk('S15 cihaz kasa olarak tanıtılır ve PIN ekranı gelir', true);
+  { const c = await p.context().newCDPSession(p); const m = JSON.parse((await c.send('Page.getAppManifest')).data || '{}'); const e = (await c.send('Page.getInstallabilityErrors')).installabilityErrors;
+    chk('PWA-1 kasa cihazı "Tetra Kasa" olarak yüklenebilir', m.name === 'Tetra Kasa' && /\/kasa$/.test(m.start_url) && e.length === 0, JSON.stringify({ ad: m.name, e })) }
   const depo = await p.evaluate(() => ({ yonetici: Object.keys(localStorage).filter(k => k.startsWith('tetra-yonetici')).length, cihaz: !!localStorage.getItem('tetra-cihaz'), sifre: JSON.stringify(localStorage).includes(document.title === '' ? '###' : 'access_token') }));
   chk('GÜV-1 tanıtılan cihazda yönetici oturumu kalmaz', depo.yonetici === 0 && depo.cihaz && !depo.sifre, depo);
   await p.goto(U + '/yonetim/personel'); await p.waitForSelector('#giris-eposta'); chk('GÜV-2 kasa cihazından Yönetim açılmaz (yeniden giriş ister)', yol(p) === '/giris');

@@ -1,0 +1,33 @@
+{
+  "id": "/tv",
+  "name": "Tetra TV",
+  "short_name": "Tetra TV",
+  "description": "Müşteri sıra ekranı.",
+  "lang": "tr",
+  "start_url": "/tv",
+  "scope": "/",
+  "display": "fullscreen",
+  "background_color": "#0f0f10",
+  "theme_color": "#0f0f10",
+  "icons": [
+    {
+      "src": "/ikon/tv-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/ikon/tv-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/ikon/tv-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "orientation": "landscape"
+}

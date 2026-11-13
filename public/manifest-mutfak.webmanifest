@@ -1,0 +1,32 @@
+{
+  "id": "/mutfak",
+  "name": "Tetra Mutfak",
+  "short_name": "Mutfak",
+  "description": "Hazırlanan siparişler ekranı.",
+  "lang": "tr",
+  "start_url": "/mutfak",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f0f10",
+  "theme_color": "#0f0f10",
+  "icons": [
+    {
+      "src": "/ikon/mutfak-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/ikon/mutfak-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/ikon/mutfak-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
