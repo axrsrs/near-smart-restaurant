@@ -20,7 +20,7 @@ export default function Yonetim() {
   return (
     <div className="min-h-dvh bg-ink">
       <UstBar />
-      <div className="mx-auto max-w-5xl px-4 pt-5 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
+      <div className="cam-p mx-2 mt-3 mb-[max(1rem,env(safe-area-inset-bottom))] rounded-[28px] bg-ink px-4 pt-5 pb-10 sm:mx-auto sm:mt-5 sm:max-w-5xl sm:px-6">
         <button type="button" onClick={() => git('/ekran')} className="mb-3 -ml-1 inline-flex min-h-11 items-center gap-1 rounded-lg px-1 text-sm text-muted hover:text-text">
           <Ikon ad="geri" className="size-4" />
           Ekran seçimi

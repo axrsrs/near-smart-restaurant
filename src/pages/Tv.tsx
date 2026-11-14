@@ -98,7 +98,7 @@ export default function Tv({ isletme, kanal }: { isletme: Isletme; kanal: string
       {!sesAcik && <p className="flex-none border-b border-line px-4 py-1.5 text-center text-[13px] text-warn">Sesli uyarı için ekrana bir kez dokunun.</p>}
       {hata && <p role="alert" className="flex-none border-b border-line px-4 py-1.5 text-center text-[13px] text-danger">{hata}</p>}
 
-      <main className="grid min-h-0 flex-1 grid-rows-2 md:grid-cols-2 md:grid-rows-1">
+      <main className="cam-p grid min-h-0 flex-1 grid-rows-2 bg-ink md:grid-cols-2 md:grid-rows-1">
         <section aria-label="Hazırlanıyor" className="flex min-h-0 flex-col overflow-hidden p-4 sm:p-6">
           <h2 className="mb-3 flex-none text-[clamp(1rem,2.4vw,1.75rem)] font-semibold tracking-wide text-muted uppercase">Hazırlanıyor</h2>
           <ul className="flex min-h-0 flex-1 flex-wrap content-start gap-x-[clamp(1rem,3vw,2.5rem)] gap-y-2 overflow-hidden">

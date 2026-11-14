@@ -89,7 +89,7 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
       {hata && <p role="alert" className="flex-none border-b border-line px-4 py-2 text-[13px] text-danger">{hata}</p>}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[2fr_1fr] lg:overflow-hidden">
-        <section aria-label="Hazırlanıyor" className="p-3 sm:p-4 lg:min-h-0 lg:overflow-y-auto">
+        <section aria-label="Hazırlanıyor" className="cam-p bg-ink p-3 sm:p-4 lg:min-h-0 lg:overflow-y-auto">
           <h2 className="mb-3 flex items-baseline gap-2 text-[13px] font-semibold tracking-wider text-muted uppercase">
             Hazırlanıyor <span className="font-normal tabular-nums">{hazirlanan.length}</span>
           </h2>

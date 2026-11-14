@@ -26,7 +26,7 @@ export default function EkranSecimi() {
   const ic = (govde: React.ReactNode) => (
     <div className="min-h-dvh bg-ink">
       <UstBar />
-      <main className="mx-auto max-w-5xl px-4 pt-8 pb-[max(2.5rem,env(safe-area-inset-bottom))]">{govde}</main>
+      <main className="cam-p mx-2 mt-3 mb-[max(1rem,env(safe-area-inset-bottom))] rounded-[28px] bg-ink px-4 pt-7 pb-10 sm:mx-auto sm:mt-5 sm:max-w-5xl sm:px-6">{govde}</main>
     </div>
   )
 

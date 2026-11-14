@@ -209,7 +209,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <main className="min-w-0 flex-1 overflow-y-auto pb-28 lg:pb-6">
+        <main className="cam-p min-w-0 flex-1 overflow-y-auto bg-ink pb-28 lg:pb-6">
           <div className="sticky top-0 z-10 bg-ink px-3 pt-3 pb-2 sm:px-4">
             <label className="relative flex items-center text-text/45 focus-within:text-text">
               <Ikon ad="ara" className="pointer-events-none absolute left-3.5 size-4" />
