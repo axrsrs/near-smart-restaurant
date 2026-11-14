@@ -20,14 +20,53 @@ function baglam(): Ctx | null {
   return ctx
 }
 
-/** İlk dokunuşta sesi açar. */
-function ac() {
+/* iPhone/iPad: yan sessiz anahtarı açıkken de uyarı duyulsun (Safari 17+ destekler) */
+function oturumAyarla() {
+  try {
+    const n = navigator as Navigator & { audioSession?: { type: string } }
+    if (n.audioSession && n.audioSession.type !== 'playback') n.audioSession.type = 'playback'
+  } catch {
+    /* desteklenmiyor */
+  }
+}
+/* Safari'de sesin tamamen açılması için kullanıcı dokunuşu sırasında bir ses başlatılması gerekir: duyulmayan kısa bir ses */
+function sessizCal(c: Ctx) {
+  try {
+    const k = c.createBufferSource()
+    k.buffer = c.createBuffer(1, 1, 22050)
+    k.connect(c.destination)
+    k.start(0)
+  } catch {
+    /* önemsiz */
+  }
+}
+
+/** Kullanıcı dokunuşunda sesi açar. Tarayıcılar izni dokunmatikte parmak kalkınca (pointerup/touchend/click) verir;
+    yalnızca pointerdown dinlemek tabletlerde sesin hiç açılmamasına yol açıyordu. */
+function ac(): Promise<boolean> {
   const c = baglam()
-  if (c && c.state === 'suspended') void c.resume().then(duyur, () => {})
+  if (!c) return Promise.resolve(false)
+  oturumAyarla()
+  if (c.state === 'running') return Promise.resolve(true)
+  sessizCal(c)
+  return c.resume().then(
+    () => {
+      duyur()
+      return c.state === 'running'
+    },
+    () => false,
+  )
 }
 if (typeof window !== 'undefined') {
-  window.addEventListener('pointerdown', ac, { passive: true })
-  window.addEventListener('keydown', ac, { passive: true })
+  for (const olay of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'])
+    window.addEventListener(olay, () => void ac(), { passive: true, capture: true })
+}
+
+/** Ses düğmesi: sesi açar (gerekirse) ve deneme için uyarıyı bir kez çalar. Dönüş: ses çalabiliyor mu. */
+export async function sesiDene(tur: Ses): Promise<boolean> {
+  const acik = await ac()
+  if (acik) cal(tur)
+  return acik
 }
 
 export type Ses = 'yeni' | 'hazirTv' | 'hazirMusteri'

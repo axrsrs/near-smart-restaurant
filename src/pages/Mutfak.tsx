@@ -6,7 +6,7 @@ import TemaDugmesi from '../components/TemaDugmesi'
 import { useCanli, useTazele } from '../lib/canli'
 import { TUR_ADI } from '../lib/etiketler'
 import { kilitle, type Isletme } from '../lib/oturum'
-import { cal, sesHazirla, useSesAcik } from '../lib/ses'
+import { cal, sesHazirla, sesiDene, useSesAcik } from '../lib/ses'
 import { siparisDurumu, siparisleriYukle, useSiparisler, type Siparis, type SiparisDurumu } from '../lib/veri'
 
 const dakika = (z: number, simdi: number) => Math.max(0, Math.floor((simdi - z) / 60_000))
@@ -76,9 +76,9 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
             <span className="size-1.5 rounded-full bg-current" />
             {bagli ? 'Canlı' : 'Bağlanıyor'}
           </span>
-          <span title={sesAcik ? 'Yeni siparişte ses çalar' : 'Ses için ekrana bir kez dokunun'} aria-label={sesAcik ? 'Ses açık' : 'Ses kapalı: açmak için ekrana dokunun'} className={`grid size-11 flex-none place-items-center rounded-full border border-line bg-ink-2 ${sesAcik ? 'text-text' : 'text-warn'}`}>
+          <button type="button" onClick={() => void sesiDene('yeni')} title={sesAcik ? 'Ses açık: denemek için dokunun' : 'Sesi açmak için dokunun'} aria-label={sesAcik ? 'Ses açık, sesi dene' : 'Ses kapalı, sesi aç'} className={`grid size-11 flex-none place-items-center rounded-full border border-line bg-ink-2 transition active:scale-95 ${sesAcik ? 'text-text' : 'text-warn'}`}>
             <Ikon ad={sesAcik ? 'ses' : 'sessiz'} className="size-5" />
-          </span>
+          </button>
           <TemaDugmesi />
           <button type="button" onClick={() => void kilitle()} title="Ekranı kilitle" aria-label="Ekranı kilitle" className="grid size-11 flex-none place-items-center rounded-full border border-line bg-ink-2 text-text">
             <Ikon ad="kilit" className="size-5" />

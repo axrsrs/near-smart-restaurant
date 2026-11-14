@@ -4,7 +4,8 @@ import Ikon from '../components/Ikon'
 import TemaDugmesi from '../components/TemaDugmesi'
 import { useCanli, useTazele } from '../lib/canli'
 import type { Isletme } from '../lib/oturum'
-import { cal, sesHazirla, useSesAcik } from '../lib/ses'
+import { cal, sesHazirla, sesiDene, useSesAcik } from '../lib/ses'
+import { tamEkranDegistir, tamEkranNotu } from '../lib/tamekran'
 import { hataMetni } from '../lib/sunucu'
 import { tvListesi, type TvSiparis } from '../lib/veri'
 
@@ -68,9 +69,15 @@ export default function Tv({ isletme, kanal }: { isletme: Isletme; kanal: string
     bilinen.current = nolar
   }, [liste, hazir])
 
-  const tamEkran = () => {
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
-    else void document.documentElement.requestFullscreen?.().catch(() => {})
+  const [not, setNot] = useState('')
+  useEffect(() => {
+    if (!not) return
+    const z = setTimeout(() => setNot(''), 9000)
+    return () => clearTimeout(z)
+  }, [not])
+  const tamEkran = async () => setNot(tamEkranNotu(await tamEkranDegistir()))
+  const sesDugmesi = async () => {
+    if (!(await sesiDene('hazirTv'))) setNot('Ses açılamadı. Cihazın sesinin açık olduğundan emin olup yeniden dokunun.')
   }
 
   return (
@@ -83,10 +90,10 @@ export default function Tv({ isletme, kanal }: { isletme: Isletme; kanal: string
         <p className="hidden text-2xl font-semibold tabular-nums sm:block" aria-hidden="true">
           {new Date(simdi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
         </p>
-        <span title={sesAcik ? 'Sipariş hazır olunca ses çalar' : 'Ses için ekrana bir kez dokunun'} aria-label={sesAcik ? 'Ses açık' : 'Ses kapalı: açmak için ekrana dokunun'} className={`grid size-11 flex-none place-items-center rounded-full border border-line bg-ink-2 ${sesAcik ? 'text-muted' : 'text-warn'}`}>
+        <button type="button" onClick={() => void sesDugmesi()} title={sesAcik ? 'Ses açık: denemek için dokunun' : 'Sesi açmak için dokunun'} aria-label={sesAcik ? 'Ses açık, sesi dene' : 'Ses kapalı, sesi aç'} className={`grid size-11 flex-none place-items-center rounded-full border border-line bg-ink-2 transition active:scale-95 ${sesAcik ? 'text-muted' : 'text-warn'}`}>
           <Ikon ad={sesAcik ? 'ses' : 'sessiz'} className="size-5" />
-        </span>
-        <button type="button" onClick={tamEkran} title="Tam ekran" aria-label="Tam ekran" className="grid size-11 flex-none place-items-center rounded-full border border-line bg-ink-2 text-muted">
+        </button>
+        <button type="button" onClick={() => void tamEkran()} title="Tam ekran" aria-label="Tam ekran" className="grid size-11 flex-none place-items-center rounded-full border border-line bg-ink-2 text-muted">
           <Ikon ad="tamekran" className="size-5" />
         </button>
         <TemaDugmesi />
@@ -96,6 +103,7 @@ export default function Tv({ isletme, kanal }: { isletme: Isletme; kanal: string
       </header>
 
       {!sesAcik && <p className="flex-none border-b border-line px-4 py-1.5 text-center text-[13px] text-warn">Sesli uyarı için ekrana bir kez dokunun.</p>}
+      {not && <p role="status" className="flex-none border-b border-line px-4 py-1.5 text-center text-[13px] text-warn">{not}</p>}
       {hata && <p role="alert" className="flex-none border-b border-line px-4 py-1.5 text-center text-[13px] text-danger">{hata}</p>}
 
       <main className="cam-p grid min-h-0 flex-1 grid-rows-2 bg-ink md:grid-cols-2 md:grid-rows-1">
