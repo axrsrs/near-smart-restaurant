@@ -1,6 +1,6 @@
 /* İşletme görünümü sınaması (yerel önizleme: npx vite preview --port 4601). Gerekli: TETRA_TEST_EPOSTA, TETRA_TEST_SIFRE. Kullanım: node testler/gorunum.cjs <görüntü klasörü> */
 const { chromium } = require('playwright')
-const U = 'http://localhost:4601', B = 'https://rfwgjzkewtjpdcvrhepg.supabase.co', K = 'sb_publishable_ohHiomyazD8qr_mQXX9G-Q_DCEeD8j2', D = process.argv[2]
+const U = process.env.U || 'http://localhost:4601', B = 'https://rfwgjzkewtjpdcvrhepg.supabase.co', K = 'sb_publishable_ohHiomyazD8qr_mQXX9G-Q_DCEeD8j2', D = process.argv[2]
 const bekle = ms => new Promise(r => setTimeout(r, ms)); let gec = 0, kal = 0
 const chk = (ad, ok, d = '') => { ok ? gec++ : kal++; console.log((ok ? '✓ ' : '✗ ') + ad + (ok ? '' : ' → ' + JSON.stringify(d).slice(0, 160))) }
 ;(async () => {
