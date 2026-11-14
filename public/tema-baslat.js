@@ -5,5 +5,5 @@
   if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   document.documentElement.dataset.theme = t;
   var m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute("content", t === "dark" ? "#0a0a09" : "#ebe9e5");
+  if (m) m.setAttribute("content", t === "dark" ? "#1f221d" : "#d6cebf");
 })();

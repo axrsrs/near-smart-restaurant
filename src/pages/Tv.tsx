@@ -74,7 +74,7 @@ export default function Tv({ isletme, kanal }: { isletme: Isletme; kanal: string
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-ink">
+    <div data-cam="mat" className="flex h-dvh flex-col bg-ink">
       <header className="flex flex-none items-center gap-3 border-b border-line px-4 pt-[env(safe-area-inset-top)] sm:px-6">
         <div className="flex h-16 min-w-0 flex-1 items-center gap-3">
           {isletme.logo && <img src={isletme.logo} alt="" className="h-10 w-auto max-w-32 flex-none object-contain" />}

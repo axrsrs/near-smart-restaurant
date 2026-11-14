@@ -12,7 +12,7 @@ export function temaOku(): Tema {
 
 function temaUygula(t: Tema) {
   document.documentElement.dataset.theme = t
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#0a0a09' : '#ebe9e5')
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#1f221d' : '#d6cebf')
   try {
     localStorage.setItem(ANAHTAR, t)
   } catch {

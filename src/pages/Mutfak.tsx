@@ -60,7 +60,7 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-ink">
+    <div data-cam="mat" className="flex h-dvh flex-col bg-ink">
       <header className="flex-none border-b border-line bg-glass pt-[env(safe-area-inset-top)]">
         <div className="flex h-16 items-center gap-2 px-3 sm:gap-3 sm:px-4">
           {isletme.logo ? (
