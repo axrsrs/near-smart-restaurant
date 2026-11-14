@@ -1,7 +1,7 @@
 /* Tetra — "Cam" tema (Tailwind v4)
-   Zemin: sıcak kafe fotoğrafı + buzlu cam paneller · Vurgu: koyu yeşil. Koyu tema aynı adları yeniden tanımlar.
-   Panel renkleri yarı saydamdır; bulanıklık (backdrop-filter) yalnızca büyük yüzeylere verilir, böylece
-   ucuz tabletlerde de akıcı kalır. Mutfak ve TV "mat" camla açılır (uzaktan okunurluk). */
+   Zemin: düz sıcak kum rengi · Paneller: açık, ışık kenarlı cam kartlar · Vurgu: koyu yeşil.
+   Koyu tema aynı adları yeniden tanımlar. Giriş ve PIN ekranları (GirisKabugu) NEAR Mono görünümünü korur:
+   o kabuğun içinde eski renkler [data-near] ile yeniden tanımlanır. */
 @import "tailwindcss";
 @import "@fontsource-variable/geist";
 
@@ -25,11 +25,8 @@
   --color-on-danger: #ffffff;
   --color-on-ok: #ffffff;
   --color-glass: rgb(246 242 235 / 0.72);
-  --cam-blur: 22px;
-  --cam-doyum: 1.2;
   --cam-kenar: rgb(255 255 255 / 0.65);
   --cam-golge: rgb(23 41 27 / 0.28);
-  --cam-perde: rgb(233 231 223 / 0.36);
   --cam-taban: #d6cebf;
 }
 
@@ -52,7 +49,6 @@
   --color-glass: rgb(21 30 24 / 0.78);
   --cam-kenar: rgb(255 255 255 / 0.14);
   --cam-golge: rgb(0 0 0 / 0.55);
-  --cam-perde: rgb(18 16 14 / 0.62);
   --cam-taban: #1f221d;
   color-scheme: dark;
 }
@@ -62,7 +58,7 @@
 :root[data-theme="dark"] [role="dialog"].bg-ink-2 { background-color: rgb(28 30 26 / 0.9); }
 
 /* Mutfak ve TV: daha az saydam, daha net cam */
-[data-cam="mat"] { --color-ink: rgb(255 255 255 / 0.7); --color-ink-2: rgb(255 255 255 / 0.84); --cam-blur: 26px; }
+[data-cam="mat"] { --color-ink: rgb(255 255 255 / 0.7); --color-ink-2: rgb(255 255 255 / 0.84); }
 :root[data-theme="dark"] [data-cam="mat"] { --color-ink: rgb(18 21 18 / 0.78); --color-ink-2: rgb(30 30 27 / 0.86); }
 
 @layer base {
@@ -73,11 +69,7 @@
     overflow-x: hidden;
     transition: background-color 0.3s, color 0.3s;
   }
-  /* arka plan: kafe fotoğrafı + temaya göre perde (sabit, kaydırmada yerinde kalır) */
-  body::before, body::after { content: ""; position: fixed; inset: 0; pointer-events: none; }
-  body::before { z-index: -2; background: url("/arka/kafe.webp") center 40% / cover no-repeat; }
-  body::after { z-index: -1; background: var(--cam-perde); transition: background-color 0.3s; }
-  @media (max-aspect-ratio: 3/4) { body::before { background-image: url("/arka/kafe-dikey.webp"); } }
+
   button { cursor: pointer; }
   button:disabled { cursor: default; }
   ::selection { background: var(--color-text); color: var(--color-ink); }
@@ -87,15 +79,25 @@
 /* ── cam yüzeyler ── */
 .min-h-dvh.bg-ink, .h-dvh.bg-ink { background-color: transparent; }
 .bg-glass, .rounded-2xl.bg-ink-2, aside.bg-ink-2, section.bg-ink-2, nav.bg-ink-2, [role="dialog"].bg-ink-2, .cam-p {
-  -webkit-backdrop-filter: blur(var(--cam-blur)) saturate(var(--cam-doyum));
-  backdrop-filter: blur(var(--cam-blur)) saturate(var(--cam-doyum));
   box-shadow: inset 0 1px 0 var(--cam-kenar), 0 20px 52px -25px var(--cam-golge);
 }
-.bg-glass { box-shadow: inset 0 -1px 0 var(--cam-kenar); }
-@supports not (backdrop-filter: blur(1px)) {
-  :root { --color-ink-2: rgb(246 242 235 / 0.95); --color-glass: rgb(246 242 235 / 0.97); }
-  :root[data-theme="dark"] { --color-ink-2: rgb(30 30 27 / 0.96); --color-glass: rgb(21 30 24 / 0.97); }
+.bg-glass { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: inset 0 -1px 0 var(--cam-kenar); }
+
+/* ── giriş ve PIN kabuğu: NEAR Mono görünümü olduğu gibi kalır ── */
+[data-near] {
+  --color-ink: #ebe9e5; --color-ink-2: #f7f6f3; --color-ink-3: #e2dfda; --color-line: #d3d0ca;
+  --color-gold: #1d5fa8; --color-gold-dark: #174e8a; --color-on-gold: #ffffff; --color-soft: #dde6f1;
+  --color-text: #151514; --color-muted: #5d5b57; --color-ok: #1f8a5b; --color-warn: #b45309; --color-danger: #c2410c;
+  --color-on-danger: #ffffff; --color-on-ok: #ffffff; --color-glass: rgb(250 249 246 / 0.9);
 }
+:root[data-theme="dark"] [data-near] {
+  --color-ink: #0a0a09; --color-ink-2: #161615; --color-ink-3: #222220; --color-line: #2e2d2b;
+  --color-gold: #6aa5e8; --color-gold-dark: #8ab9ee; --color-on-gold: #08121f; --color-soft: #14233a;
+  --color-text: #f1efea; --color-muted: #a3a09a; --color-ok: #4cc38a; --color-warn: #e39a4a; --color-danger: #f0764a;
+  --color-on-danger: #1c0a03; --color-on-ok: #04140c; --color-glass: rgb(12 12 11 / 0.86);
+}
+.min-h-dvh.bg-ink[data-near] { background-color: var(--color-ink); }
+[data-near] .giris-zemin { opacity: 0.07; }
 
 /* tema geçişi: düğmeden açılan kare (animasyonu tema.ts verir) */
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
@@ -153,7 +155,6 @@
 @media print {
   @page { size: 80mm auto; margin: 3mm; }
   html, body { background: #fff !important; }
-  body::before, body::after { display: none !important; }
   body > *:not(.fis-kagit) { display: none !important; }
   .fis-kagit {
     display: block;

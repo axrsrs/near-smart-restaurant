@@ -18,7 +18,7 @@ export default function GirisKabugu({ children, genislik = 'max-w-96' }: { child
   }
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-x-hidden bg-ink px-4 pt-[max(5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+    <div data-near className="relative flex min-h-dvh items-center justify-center overflow-x-hidden bg-ink px-4 pt-[max(5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <AkisArkaPlan />
       <div aria-hidden="true" className="giris-zemin pointer-events-none fixed inset-0 z-0" />
       <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 left-4 z-10 flex items-center justify-between gap-3">
