@@ -6,6 +6,7 @@ import { dogrulamaAl } from './dogrula'
 import { useSyncExternalStore } from 'react'
 import { oku, yaz } from './depo'
 import { cagir, hataMetni, sunucu, SunucuHatasi } from './sunucu'
+import { gecerli, gorunumUygula, type Gorunum } from './gorunum'
 
 export type Sonuc = { tamam: true } | { tamam: false; hata: string }
 export type Ekran = 'kasa' | 'mutfak' | 'tv' | 'yonetim'
@@ -15,7 +16,7 @@ export const EKRAN_ADI: Record<Ekran, string> = { kasa: 'Kasa', mutfak: 'Mutfak'
 export const PIN_ISTEYEN: Ekran[] = ['kasa', 'mutfak']
 
 export type Isletme = { id: string; slug: string; ad: string; logo: string }
-export type IsletmeKaydi = Isletme & { rol: string; tetra: boolean; abonelik: boolean }
+export type IsletmeKaydi = Isletme & { rol: string; tetra: boolean; abonelik: boolean; gorunum: Gorunum | null }
 export type Yonetici =
   | { durum: 'yukleniyor' }
   | { durum: 'yok' }
@@ -31,6 +32,7 @@ type CihazYaniti = {
   cihaz: { id: string; ekran: CihazEkrani; ad: string }
   isletme: Isletme
   kanal: string
+  gorunum: unknown
   personel: { id: string; ad: string } | null
   personel_tanimli: boolean
 }
@@ -54,6 +56,7 @@ let cihazNotu = '' // cihaz kaldırıldığında giriş ekranında gösterilecek
 
 const ayarlaYonetici = (y: Yonetici) => {
   yonetici = y
+  if (y.durum === 'var' && y.secili) gorunumUygula(y.secili.gorunum)
   duyur()
 }
 const ayarlaCihaz = (c: Cihaz) => {
@@ -66,7 +69,7 @@ const EPOSTA = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 async function yoneticiYukle(eposta: string) {
   try {
-    const liste = await cagir<IsletmeKaydi[]>('tetra_baslangic')
+    const liste = (await cagir<IsletmeKaydi[]>('tetra_baslangic')).map((i) => ({ ...i, gorunum: gecerli(i.gorunum) }))
     const tetraAcik = liste.filter((i) => i.tetra)
     const kayitli = oku<string>('local', A_ISLETME)
     const secili = tetraAcik.find((i) => i.id === kayitli) ?? (tetraAcik.length === 1 ? tetraAcik[0] : null)
@@ -138,6 +141,14 @@ export async function cikis() {
   ayarlaYonetici({ durum: 'yok' })
 }
 
+/** İşletme sahibi görünümü kaydettikten sonra yerel kaydı günceller ve bu ekrana uygular. */
+export function gorunumGuncelle(id: string, g: Gorunum) {
+  const y = yonetici
+  if (y.durum !== 'var') return
+  const isletmeler = y.isletmeler.map((i) => (i.id === id ? { ...i, gorunum: g } : i))
+  ayarlaYonetici({ ...y, isletmeler, secili: isletmeler.find((i) => i.id === y.secili?.id) ?? y.secili })
+}
+
 export function isletmeSec(id: string) {
   if (yonetici.durum !== 'var') return
   const secili = yonetici.isletmeler.find((i) => i.id === id && i.tetra) ?? null
@@ -191,6 +202,7 @@ export function cihazYenile(): Promise<void> {
       }
       kayit = { ...k, ekran: y.cihaz.ekran, ad: y.cihaz.ad, isletme: y.isletme }
       yaz('local', A_CIHAZ, kayit)
+      gorunumUygula(y.gorunum)
       ayarlaCihaz({ durum: 'hazir', id: y.cihaz.id, ekran: y.cihaz.ekran, ad: y.cihaz.ad, isletme: y.isletme, kanal: y.kanal, personel: y.personel, personelTanimli: y.personel_tanimli })
     } catch (e) {
       if (kayit && !(e instanceof SunucuHatasi && (e.kod === 'TT002' || e.kod === 'TT003')))
@@ -202,6 +214,8 @@ export function cihazYenile(): Promise<void> {
   return yenileniyor
 }
 if (kayit) void cihazYenile()
+// işletme sahibi görünümü değiştirdiğinde (canlı kanal haberi) cihaz yeni renkleri okur
+if (typeof window !== 'undefined') window.addEventListener('tetra-gorunum', () => { if (kayit) void cihazYenile() })
 
 /** Bu tableti kasa / mutfak / TV olarak tanıtır. Yönetici oturumu bu cihazda kapatılır: cihaz yalnızca kendi anahtarını taşır. */
 export async function cihazTanit(isletme: Isletme, ekran: CihazEkrani, ad: string): Promise<Sonuc> {

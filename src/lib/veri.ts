@@ -139,7 +139,7 @@ export async function tvListesi(): Promise<TvSiparis[]> {
 }
 
 /* ───────── müşteri: sipariş takibi (takip koduyla, girişsiz) ───────── */
-export type Takip = { no: number; durum: SiparisDurumu; tur: SiparisTuru; isletme: { ad: string; logo: string } }
+export type Takip = { no: number; durum: SiparisDurumu; tur: SiparisTuru; isletme: { ad: string; logo: string }; gorunum?: unknown }
 export const takipOku = (kod: string) => cagir<Takip | null>('tetra_takip', { p_kod: kod })
 
 /* ───────── rapor (işletme sahibi) ───────── */

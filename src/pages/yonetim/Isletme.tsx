@@ -3,6 +3,7 @@ import Ikon from '../../components/Ikon'
 import { menuYukle, useMenu } from '../../lib/menu'
 import { isletmeSec, useYonetici } from '../../lib/oturum'
 import { useSeciliIsletme } from '../../lib/secili'
+import GorunumAyari from './Gorunum'
 
 /** İşletme bilgisi ve NearMenu bağlantısı: ürünler, fiyatlar, fotoğraflar, ad ve logo NearMenu'deki kayıttan gelir. */
 export default function Isletme() {
@@ -13,6 +14,7 @@ export default function Isletme() {
   const coklu = y.durum === 'var' && y.isletmeler.filter((i) => i.tetra).length > 1
 
   return (
+    <>
     <section className="max-w-3xl rounded-2xl border border-line bg-ink-2 p-5">
       <h2 className="text-lg font-semibold">İşletme</h2>
       <p className="mt-1 text-sm text-muted">Ürünler, fiyatlar, fotoğraflar, işletme adı ve logosu NearMenu panelinden yönetilir. Orada yaptığın değişiklik kasada da görünür.</p>
@@ -48,5 +50,7 @@ export default function Isletme() {
         )}
       </div>
     </section>
+    <GorunumAyari />
+    </>
   )
 }

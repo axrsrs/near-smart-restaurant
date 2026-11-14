@@ -5,6 +5,7 @@ import TemaDugmesi from '../components/TemaDugmesi'
 import { bildirimAc, bildirimDestegi } from '../lib/bildirim'
 import { useCanli } from '../lib/canli'
 import { cal, sesHazirla } from '../lib/ses'
+import { gorunumUygula } from '../lib/gorunum'
 import { takipOku, type SiparisDurumu, type Takip as TakipVerisi } from '../lib/veri'
 
 const ADIMLAR: { durum: SiparisDurumu; ad: string }[] = [
@@ -30,6 +31,7 @@ export default function Takip() {
       (v) => {
         setVeri(v)
         setHata(false)
+        if (v) gorunumUygula(v.gorunum, false) // müşteri işletmenin renklerini görür
       },
       () => setHata(true),
     )
