@@ -156,7 +156,7 @@ export default function Kurulum() {
   const waAdres = `https://wa.me/${whatsapp}?text=${encodeURIComponent('Merhaba, Tetra kurulumu için yazıyorum.')}`
 
   return (
-    <div className="min-h-dvh bg-ink">
+    <div data-near className="min-h-dvh bg-ink">
       <header className="relative isolate overflow-hidden">
         <AkisArkaPlan />
         <div className="relative z-[1] mx-auto flex max-w-3xl flex-col items-center px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-16 text-center sm:pb-24">
