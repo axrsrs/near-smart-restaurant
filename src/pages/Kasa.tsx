@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Anahtar from '../components/Anahtar'
 import { ALAN, BTN_ANA, BTN_IKINCIL, IKON_BTN } from '../components/bicim'
 import Fis from '../components/Fis'
+import GunSonuFis from '../components/GunSonuFis'
+import GunSonuPenceresi, { type GunSonuBaski } from '../components/GunSonuPenceresi'
 import Ikon from '../components/Ikon'
 import MaliFis from '../components/MaliFis'
 import Pencere from '../components/Pencere'
@@ -29,7 +31,7 @@ import {
 } from '../lib/veri'
 
 type Satir = { anahtar: string; urunId: string; ad: string; fiyat: number; adet: number; not: string }
-type Acik = null | { t: 'sepet' } | { t: 'not'; anahtar: string } | { t: 'odeme'; istek: string } | { t: 'tamam'; siparis: Siparis } | { t: 'siparisler' } | { t: 'gorunum' }
+type Acik = null | { t: 'sepet' } | { t: 'not'; anahtar: string } | { t: 'odeme'; istek: string } | { t: 'tamam'; siparis: Siparis } | { t: 'siparisler' } | { t: 'gorunum' } | { t: 'gunsonu' }
 
 const HAZIR_NOTLAR = ['Soğansız', 'Acısız', 'Az pişmiş', 'İyi pişmiş', 'Sossuz', 'Buzsuz', 'Şekersiz', 'Yanında peçete']
 const A_SEPET = 'tetra-sepet'
@@ -59,6 +61,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
   const [stokModu, setStokModu] = useState(false)
   const [acik, setAcik] = useState<Acik>(null)
   const [basilacak, setBasilacak] = useState<{ siparis: Siparis; sira: number } | null>(null)
+  const [basilacakGun, setBasilacakGun] = useState<{ baski: GunSonuBaski; sira: number } | null>(null)
   const [uyari, setUyari] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const tamamlaniyor = useRef(false)
@@ -76,11 +79,13 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
 
   /* fiş: önce yazdırılacak fiş sayfaya konur, sonra tarayıcının yazdırma penceresi açılır */
   useEffect(() => {
-    if (!basilacak) return
+    if (!basilacak && !basilacakGun) return
     const sayac = setTimeout(() => window.print(), 80)
     return () => clearTimeout(sayac)
-  }, [basilacak])
-  const yazdir = (siparis: Siparis) => setBasilacak((o) => ({ siparis, sira: (o?.sira ?? 0) + 1 }))
+  }, [basilacak, basilacakGun])
+  // aynı anda tek fiş sayfada durur: sipariş fişi ya da gün sonu raporu
+  const yazdir = (siparis: Siparis) => { setBasilacakGun(null); setBasilacak((o) => ({ siparis, sira: (o?.sira ?? 0) + 1 })) }
+  const gunSonuYazdir = (baski: GunSonuBaski) => { setBasilacak(null); setBasilacakGun((o) => ({ baski, sira: (o?.sira ?? 0) + 1 })) }
 
   /* Sepet her zaman güncel menüye göre okunur: fiyat ve ad menüden gelir (sepette saklanan fiyata güvenilmez),
      tükenen ya da menüden kalkan ürün satırı düşer. */
@@ -415,8 +420,10 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
           </div>
         </Pencere>
       )}
-      {acik?.t === 'siparisler' && <SiparislerPenceresi liste={bugunku} yazdir={yazdir} kapat={() => setAcik(null)} />}
+      {acik?.t === 'siparisler' && <SiparislerPenceresi liste={bugunku} yazdir={yazdir} gunSonu={() => setAcik({ t: 'gunsonu' })} kapat={() => setAcik(null)} />}
+      {acik?.t === 'gunsonu' && <GunSonuPenceresi yazdir={gunSonuYazdir} kapat={() => setAcik(null)} />}
       {basilacak && <Fis key={basilacak.sira} siparis={basilacak.siparis} isletmeAd={isletmeAd} />}
+      {basilacakGun && <GunSonuFis key={basilacakGun.sira} ozet={basilacakGun.baski.ozet} kapanis={basilacakGun.baski.kapanis} isletmeAd={isletmeAd} kasiyer={personel.ad} />}
     </div>
   )
 }
@@ -530,7 +537,7 @@ function NotPenceresi({ satir, kaydet, kapat }: { satir: Satir; kaydet: (not: st
   )
 }
 
-function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdir: (s: Siparis) => void; kapat: () => void }) {
+function SiparislerPenceresi({ liste, yazdir, gunSonu, kapat }: { liste: Siparis[]; yazdir: (s: Siparis) => void; gunSonu: () => void; kapat: () => void }) {
   const [iptalSor, setIptalSor] = useState<string | null>(null)
   const [hata, setHata] = useState('')
   const gecerli = liste.filter((s) => s.durum !== 'iptal')
@@ -547,6 +554,10 @@ function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdi
           </div>
         ))}
       </div>
+      <button type="button" onClick={gunSonu} className={`${BTN_IKINCIL} mt-2 w-full`}>
+        <Ikon ad="grafik" className="size-4" />
+        Gün sonu raporu
+      </button>
       {bekleyen > 0 && <p className="mt-2 rounded-xl border border-warn/50 bg-ink px-3 py-2 text-[13px] text-warn"><b className="font-semibold">{bekleyen} siparişin</b> mali fişi bekliyor. Yazarkasadan kesip işaretle.</p>}
       <p role="alert" aria-live="polite" className="mt-2 min-h-5 text-[13px] text-danger">{hata}</p>
       {!liste.length && <p className="mt-4 mb-2 text-center text-sm text-muted">Bugün henüz sipariş alınmadı.</p>}

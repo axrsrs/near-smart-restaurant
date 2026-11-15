@@ -5,7 +5,7 @@ import { ODEME_ADI } from '../../lib/etiketler'
 import { tl } from '../../lib/para'
 import { useSeciliIsletme } from '../../lib/secili'
 import { hataMetni } from '../../lib/sunucu'
-import { maliBekleyenler, maliIsaretleSahip, raporOku, type Rapor, type Siparis } from '../../lib/veri'
+import { gunSonuListe, maliBekleyenler, maliIsaretleSahip, raporOku, type GunSonu, type Rapor, type Siparis } from '../../lib/veri'
 
 const iso = (t: Date) => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
 const gunOnce = (n: number) => {
@@ -32,6 +32,16 @@ export default function Raporlar() {
   const [hata, setHata] = useState('')
   const [yuklenen, setYuklenen] = useState('')
   const [tazele, setTazele] = useState(0) // mali fiş işaretlenince rapor yeniden okunur
+  const [kapanislar, setKapanislar] = useState<GunSonu[]>([])
+
+  useEffect(() => {
+    if (!bas || !bit || bit < bas) return
+    let iptal = false
+    gunSonuListe(isletme.id, bas, bit).then((l) => !iptal && setKapanislar(l), () => !iptal && setKapanislar([]))
+    return () => {
+      iptal = true
+    }
+  }, [isletme.id, bas, bit])
   const anahtar = `${isletme.id}|${bas}|${bit}`
   const bekle = yuklenen !== anahtar // seçilen aralığın raporu henüz gelmedi
 
@@ -68,6 +78,7 @@ export default function Raporlar() {
   const enCok = Math.max(1, ...(rapor?.urunler.map((u) => u.ciro) ?? [1]))
 
   const kdv = rapor?.kdv ?? []
+  const toplamFark = kapanislar.reduce((t, k) => t + (k.fark ?? 0), 0)
   return (
     <>
       <MaliBekleyenler isletme={isletme.id} degisti={() => setTazele((n) => n + 1)} />
@@ -177,6 +188,36 @@ export default function Raporlar() {
                 </ul>
               </section>
             </div>
+          )}
+          {kapanislar.length > 0 && (
+            <section className="mt-6">
+              <div className="mb-2.5 flex flex-wrap items-baseline gap-x-3">
+                <h2 className="min-w-0 flex-1 text-[13px] font-semibold tracking-wider text-muted uppercase">Gün sonu kayıtları ve kasa sayımı</h2>
+                {kapanislar.some((k) => k.fark !== null) && (
+                  <span className={`text-[13px] font-semibold tabular-nums ${toplamFark === 0 ? 'text-ok' : 'text-warn'}`}>
+                    Toplam fark: {toplamFark === 0 ? 'yok' : toplamFark > 0 ? `+${tl(toplamFark)}` : `−${tl(-toplamFark)}`}
+                  </span>
+                )}
+              </div>
+              <ul className="grid gap-2 lg:grid-cols-2">
+                {kapanislar.map((k) => (
+                  <li key={k.id} className="rounded-xl border border-line bg-ink-2 p-3">
+                    <div className="flex items-baseline gap-3">
+                      <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
+                        {gunYazi(k.gun)} · {new Date(k.zaman).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className={`flex-none text-[15px] font-semibold tabular-nums ${k.fark === null ? 'text-muted' : k.fark === 0 ? 'text-ok' : 'text-warn'}`}>
+                        {k.fark === null ? 'Sayım yok' : k.fark === 0 ? 'Tam' : k.fark > 0 ? `+${tl(k.fark)}` : `−${tl(-k.fark)}`}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[13px] text-muted tabular-nums">
+                      {k.personel_ad} · Beklenen {tl(k.beklenen_nakit)}{k.sayilan_nakit !== null ? ` · Sayılan ${tl(k.sayilan_nakit)}` : ''} · Ciro {tl(k.ozet.ciro)}
+                    </p>
+                    {k.aciklama && <p className="mt-0.5 text-[13px]">Not: {k.aciklama}</p>}
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </div>
       )}

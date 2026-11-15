@@ -207,3 +207,36 @@ function abone(f: () => void) {
 }
 export const useSiparisler = () => useSyncExternalStore(abone, () => siparisler)
 export const useOtomatikFis = () => useSyncExternalStore(abone, () => otomatikFis)
+
+/* ───────── gün sonu ───────── */
+export type GunOzeti = {
+  gun: string
+  siparis: number
+  ciro: number
+  nakit: number
+  kart: number
+  burada: number
+  paket: number
+  ilk: string | null
+  son: string | null
+  iptal: { adet: number; tutar: number; liste: { no: number; tutar: number; kisi: string; zaman: string | null }[] }
+  personel: { ad: string; siparis: number; ciro: number; nakit: number; kart: number }[]
+  kdv: KdvSatiri[]
+  mali: { bekleyen: number; tutar: number }
+  urunler: { ad: string; adet: number; ciro: number }[]
+}
+export type GunSonu = { id: string; gun: string; zaman: string; personel_ad: string; beklenen_nakit: number; sayilan_nakit: number | null; fark: number | null; aciklama: string; ozet: GunOzeti }
+
+/** Kasa: bugünün özeti ve bugün alınmış gün sonu kayıtları. */
+export const gunSonuOku = () => cihazCagir<{ ozet: GunOzeti; kapanislar: GunSonu[] }>('tetra_gun_sonu_oku')
+/** Kasa: gün sonunu kaydeder. sayilan (kuruş) boş bırakılabilir. */
+export async function gunSonuKaydet(sayilan: number | null, aciklama: string): Promise<Sonuc & { kapanis?: GunSonu }> {
+  try {
+    const y = await cihazCagir<Yanit & { kapanis?: GunSonu }>('tetra_gun_sonu_kaydet', { p_sayilan: sayilan, p_aciklama: aciklama.trim() })
+    return y.tamam && y.kapanis ? { tamam: true, kapanis: y.kapanis } : { tamam: false, hata: y.hata ?? 'Gün sonu kaydedilemedi.' }
+  } catch (e) {
+    return { tamam: false, hata: hataMetni(e) }
+  }
+}
+/** Yönetim: tarih aralığındaki gün sonu kayıtları. */
+export const gunSonuListe = (isletme: string, bas: string, bit: string) => cagir<GunSonu[]>('tetra_gun_sonu_liste', { p_restaurant: isletme, p_bas: bas, p_bit: bit })
