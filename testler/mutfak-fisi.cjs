@@ -27,6 +27,7 @@ const baski = p => p.evaluate(() => window.__baski)
       const ad = r.request().url().split('/rpc/')[1].split('?')[0]
       if (ad === 'tetra_cihaz_durum') return r.fulfill({ json: { cihaz: { id: 'c1', ekran, ad: ekran }, isletme, kanal: 'sinama-mf-' + w + ekran + yer, gorunum: null, personel: { id: 'p1', ad: 'Elif' }, personel_tanimli: true } })
       if (ad === 'tetra_siparisler') return r.fulfill({ json: { gun: bugun, siparisler: liste.v } })
+      if (ad === 'tetra_kasa_secenekler') return r.fulfill({ json: { gruplar: [], urunler: {} } }) // seçenek okuması da taklit edilir (sahte cihaz anahtarı sunucuda tanınmaz)
       if (ad === 'tetra_siparis_olustur') {
         const s = sip(12, [{ urun_id: 'x', ad: 'Tavuk Dürüm', fiyat: 15000, adet: 2, not: 'Soğansız, Acısız' }, { urun_id: 'y', ad: 'Ayran', fiyat: 3000, adet: 2, not: '' }], 'paket')
         s.toplam = 36000; liste.v = [s, ...liste.v]; return r.fulfill({ json: { tamam: true, siparis: s } })

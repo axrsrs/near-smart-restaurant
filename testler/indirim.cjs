@@ -21,6 +21,7 @@ const bugun = new Date().toISOString().slice(0, 10)
       const ad = r.request().url().split('/rpc/')[1].split('?')[0], g = r.request().postDataJSON() || {}
       if (ad === 'tetra_cihaz_durum') return r.fulfill({ json: { cihaz: { id: 'c1', ekran: 'kasa', ad: 'Kasa' }, isletme, kanal: 'sinama-ind-' + yetki + w, gorunum: null, personel: { id: 'p1', ad: 'Elif', indirim: yetki }, personel_tanimli: true } })
       if (ad === 'tetra_siparisler') return r.fulfill({ json: { gun: bugun, siparisler: [] } })
+      if (ad === 'tetra_kasa_secenekler') return r.fulfill({ json: { gruplar: [], urunler: {} } }) // seçenek okuması da taklit edilir (sahte cihaz anahtarı sunucuda tanınmaz)
       if (ad === 'tetra_siparis_olustur') {
         son = g; no++
         const brut = 50000, i = g.p_indirim

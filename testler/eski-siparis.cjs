@@ -20,6 +20,7 @@ const liste = [sip(48, dun, 3, 'hazirlaniyor', 50000), sip(2, bugun, 0.5, 'hazir
       const ad = r.request().url().split('/rpc/')[1].split('?')[0]
       if (ad === 'tetra_cihaz_durum') return r.fulfill({ json: { cihaz: { id: 'c1', ekran, ad: ekran }, isletme, kanal: 'sinama-es-' + ekran + w, gorunum: null, personel: { id: 'p1', ad: 'Elif' }, personel_tanimli: true } })
       if (ad === 'tetra_siparisler') return r.fulfill({ json: { gun: bugun, siparisler: ekran === 'mutfak' ? liste.filter(s => s.durum === 'hazirlaniyor') : liste } })
+      if (ad === 'tetra_kasa_secenekler') return r.fulfill({ json: { gruplar: [], urunler: {} } }) // seçenek okuması da taklit edilir (sahte cihaz anahtarı sunucuda tanınmaz)
       return r.continue()
     })
     const p = await c.newPage(); p.on('pageerror', e => console.log('SAYFA HATASI', e.message)); return p

@@ -24,6 +24,7 @@ const ozet = { gun: bugun, siparis: 48, ciro: 1245000, nakit: 427000, kart: 8180
       const ad = r.request().url().split('/rpc/')[1].split('?')[0], g = r.request().postDataJSON() || {}
       if (ad === 'tetra_cihaz_durum') return r.fulfill({ json: { cihaz: { id: 'c1', ekran: 'kasa', ad: 'Kasa' }, isletme, kanal: 'sinama-gs-' + w, gorunum: null, personel: { id: 'p1', ad: 'Elif' }, personel_tanimli: true } })
       if (ad === 'tetra_siparisler') return r.fulfill({ json: { gun: bugun, siparisler: [] } })
+      if (ad === 'tetra_kasa_secenekler') return r.fulfill({ json: { gruplar: [], urunler: {} } }) // seçenek okuması da taklit edilir (sahte cihaz anahtarı sunucuda tanınmaz)
       if (ad === 'tetra_gun_sonu_oku') return r.fulfill({ json: { ozet, kapanislar: kayitlar } })
       if (ad === 'tetra_gun_sonu_kaydet') { son = g; const k = { id: 'g' + kayitlar.length, gun: bugun, zaman: new Date().toISOString(), personel_ad: 'Elif', beklenen_nakit: ozet.nakit, sayilan_nakit: g.p_sayilan, fark: g.p_sayilan === null ? null : g.p_sayilan - ozet.nakit, aciklama: g.p_aciklama, ozet }; kayitlar = [k, ...kayitlar]; return r.fulfill({ json: { tamam: true, kapanis: k } }) }
       return r.continue()

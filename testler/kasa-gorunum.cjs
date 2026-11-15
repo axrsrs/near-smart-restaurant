@@ -18,6 +18,7 @@ const chk = (ad, ok, d = '') => { ok ? gec++ : kal++; console.log((ok ? '✓ ' :
       const ad = r.request().url().split('/rpc/')[1]
       if (ad.startsWith('tetra_cihaz_durum')) return r.fulfill({ json: { cihaz: { id: 'c1', ekran: 'kasa', ad: 'Kasa' }, isletme, kanal: 'sinama-' + w, gorunum: null, personel: { id: 'p1', ad: 'Elif' }, personel_tanimli: true } })
       if (ad.startsWith('tetra_siparisler')) return r.fulfill({ json: { gun: '2026-11-15', siparisler: [] } })
+      if (ad === 'tetra_kasa_secenekler') return r.fulfill({ json: { gruplar: [], urunler: {} } }) // seçenek okuması da taklit edilir (sahte cihaz anahtarı sunucuda tanınmaz)
       return r.continue()
     })
     const p = await c.newPage(); p.on('pageerror', e => console.log('SAYFA HATASI', e.message))

@@ -25,6 +25,7 @@ const kes = (no) => ({ durum: 'kesildi', fis_no: no, zaman: simdi, kisi: 'Elif' 
   const taklit = async (ctx, ozel = {}) => ctx.route(`${B}/rest/v1/rpc/**`, async (route) => {
     const ad = route.request().url().split('/rpc/')[1].split('?')[0], g = route.request().postDataJSON() || {}
     cagrilar.push({ ad, g })
+    if (ad === 'tetra_kasa_secenekler' && !(ad in ozel)) return route.fulfill({ json: { gruplar: [], urunler: {} } }) // sahte cihaz anahtarı sunucuda tanınmaz
     if (ad in ozel) return route.fulfill({ json: typeof ozel[ad] === 'function' ? ozel[ad](g) : ozel[ad] })
     return route.continue() // menü vb. gerçek sunucudan okunur
   })
