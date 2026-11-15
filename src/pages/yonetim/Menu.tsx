@@ -7,7 +7,10 @@ import Pencere from '../../components/Pencere'
 import { useMenu, type MenuKategori, type MenuUrun } from '../../lib/menu'
 import { kategoriAdDegistir, kategoriEkle, urunEkle, urunGuncelle, urunSil, urunTukendi } from '../../lib/menuDuzenle'
 import { fiyatCoz, fiyatYazi, tl } from '../../lib/para'
+import { secenekListe, type SecenekVeri } from '../../lib/secenek'
 import { useSeciliIsletme } from '../../lib/secili'
+import { hataMetni } from '../../lib/sunucu'
+import SecenekGruplari from './SecenekGruplari'
 import { KDV_ORANLARI, kdvKaydet, maliAyarOku, type KdvOrani, type MaliAyar } from '../../lib/veri'
 
 const YENI = '__yeni__'
@@ -35,6 +38,26 @@ export default function Menu() {
     }
   }, [isletme.id])
 
+  // ürün seçenekleri (boy, ekstralar): Tetra'da tutulur
+  const [bolum, setBolum] = useState<'urun' | 'secenek'>('urun')
+  const [secVeri, setSecVeri] = useState<SecenekVeri | null>(null)
+  const [secHata, setSecHata] = useState('')
+  const [secSira, setSecSira] = useState(0)
+  useEffect(() => {
+    let iptal = false
+    secenekListe(isletme.id).then(
+      (v) => { if (!iptal) { setSecVeri(v); setSecHata('') } },
+      (e) => !iptal && setSecHata(hataMetni(e)),
+    )
+    return () => {
+      iptal = true
+    }
+  }, [isletme.id, secSira])
+  const grupAdlari = (urunId: string) => {
+    const ids = secVeri?.urunler[urunId] ?? []
+    return ids.map((id) => secVeri?.gruplar.find((g) => g.id === id)?.ad).filter(Boolean).join(', ')
+  }
+
   const kategoriler = useMemo(() => menu?.kategoriler ?? [], [menu])
   const aktif = kategori === 'tum' || kategoriler.some((k) => k.id === kategori) ? kategori : 'tum'
   const gruplar = useMemo(() => {
@@ -48,8 +71,31 @@ export default function Menu() {
 
   if (!menu) return <p className="mt-6 text-center text-sm text-muted">{yukleniyor ? 'Menü yükleniyor…' : hata || 'Menü okunamadı.'}</p>
 
+  const bolumSecici = (
+    <div role="tablist" aria-label="Menü bölümü" className="mb-4 grid max-w-sm grid-cols-2 gap-1 rounded-xl border border-line bg-ink-2 p-1">
+      {([['urun', 'Ürünler'], ['secenek', 'Seçenek grupları']] as const).map(([k, ad]) => (
+        <button key={k} type="button" role="tab" aria-selected={bolum === k} onClick={() => setBolum(k)} className={`min-h-11 rounded-lg text-sm font-semibold transition ${bolum === k ? 'bg-text text-ink' : 'text-muted hover:text-text'}`}>
+          {ad}
+          {k === 'secenek' && secVeri && secVeri.gruplar.length > 0 && <span className="ml-1.5 font-normal tabular-nums opacity-70">{secVeri.gruplar.length}</span>}
+        </button>
+      ))}
+    </div>
+  )
+  if (bolum === 'secenek')
+    return (
+      <>
+        {bolumSecici}
+        {secVeri ? (
+          <SecenekGruplari isletme={isletme.id} veri={secVeri} kategoriler={kategoriler} yenile={() => setSecSira((n) => n + 1)} />
+        ) : (
+          <p role="alert" className="mt-6 text-center text-sm text-muted">{secHata || 'Seçenekler yükleniyor…'}</p>
+        )}
+      </>
+    )
+
   return (
     <>
+      {bolumSecici}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <p className="min-w-0 flex-1 text-sm text-muted">Buradaki değişiklik QR menünde ve kasada aynı anda görünür. Fotoğraf, açıklama ve ayrıntılar NearMenu panelinde.</p>
         <a href={`https://neardiji.com/${encodeURIComponent(isletme.slug)}`} target="_blank" rel="noopener noreferrer" className={BTN_IKINCIL}>
@@ -100,6 +146,7 @@ export default function Menu() {
                   <p className="text-sm text-muted tabular-nums">
                     {tl(u.fiyat)}
                     {kdv?.urunler[u.id] && <span className="ml-2 rounded-full border border-line px-1.5 text-xs">KDV %{kdv.urunler[u.id]}</span>}
+                    {grupAdlari(u.id) && <span className="ml-2 text-xs text-gold">{grupAdlari(u.id)}</span>}
                     {u.tukendi && <span className="ml-2 font-semibold text-warn">Tükendi</span>}
                   </p>
                 </div>

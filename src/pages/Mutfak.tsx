@@ -176,6 +176,7 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
                       {s.kalemler.map((k, i) => (
                         <li key={i} className="text-base leading-snug">
                           <b className="font-semibold tabular-nums">{k.adet} ×</b> {k.ad}
+                          {k.secenekler.length > 0 && <span className="block pl-7 text-[15px] font-semibold text-gold">{k.secenekler.map((o) => o.ad).join(' · ')}</span>}
                           {k.not && <span className="block pl-7 text-[15px] font-semibold text-warn">{k.not}</span>}
                         </li>
                       ))}

@@ -20,6 +20,9 @@ export default function MutfakFis({ siparis, isletmeAd }: { siparis: Siparis; is
           <p>
             <b>{k.adet} ×</b> {k.ad}
           </p>
+          {k.secenekler.map((o, j) => (
+            <p key={j} className="fis-mutfak-not">+ {o.ad}</p>
+          ))}
           {k.not && <p className="fis-mutfak-not">» {k.not}</p>}
         </div>
       ))}

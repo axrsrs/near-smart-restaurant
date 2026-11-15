@@ -10,6 +10,7 @@ import MaliFis from '../components/MaliFis'
 import MutfakFis from '../components/MutfakFis'
 import Pencere from '../components/Pencere'
 import QrKod from '../components/QrKod'
+import SecenekPenceresi from '../components/SecenekPenceresi'
 import TemaDugmesi from '../components/TemaDugmesi'
 import { useCanli, useTazele } from '../lib/canli'
 import { oku, yaz } from '../lib/depo'
@@ -18,6 +19,7 @@ import { ODEME_ADI, takipAdresi, TUR_ADI } from '../lib/etiketler'
 import { menuYukle, useMenu, type MenuUrun } from '../lib/menu'
 import { kilitle, type Isletme, type Personel } from '../lib/oturum'
 import { tl } from '../lib/para'
+import { kasaSecenekYukle, secimYazisi, urunGruplari, useKasaSecenek, type Secim } from '../lib/secenek'
 import {
   INDIRIM_ADI,
   indirimTutari,
@@ -36,14 +38,15 @@ import {
   type SiparisTuru,
 } from '../lib/veri'
 
-type Satir = { anahtar: string; urunId: string; ad: string; fiyat: number; adet: number; not: string }
-type Acik = null | { t: 'sepet' } | { t: 'not'; anahtar: string } | { t: 'odeme'; istek: string } | { t: 'tamam'; siparis: Siparis } | { t: 'siparisler' } | { t: 'gorunum' } | { t: 'gunsonu' }
+type Satir = { anahtar: string; urunId: string; ad: string; fiyat: number; adet: number; not: string; secenekler?: Secim[] }
+type Acik = null | { t: 'sepet' } | { t: 'not'; anahtar: string } | { t: 'odeme'; istek: string } | { t: 'tamam'; siparis: Siparis } | { t: 'siparisler' } | { t: 'gorunum' } | { t: 'gunsonu' } | { t: 'secenek'; urun: MenuUrun }
 
 const HAZIR_NOTLAR = ['Soğansız', 'Acısız', 'Az pişmiş', 'İyi pişmiş', 'Sossuz', 'Buzsuz', 'Şekersiz', 'Yanında peçete']
 const A_SEPET = 'tetra-sepet'
 const istekKimligi = () => (crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => (Number(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(c) / 4)))).toString(16)))
 const kucuk = (s: string) => s.toLocaleLowerCase('tr')
-const anahtar = (urunId: string, not: string) => `${urunId}|${kucuk(not)}`
+// sepet satırı kimliği: aynı ürün, aynı seçenekler ve aynı not tek satırda birleşir
+const anahtar = (urunId: string, not: string, sec: { id: string }[] = []) => `${urunId}|${sec.map((s) => s.id).sort().join(',')}|${kucuk(not)}`
 const IZGARA: Record<KasaGorunum, string> = {
   buyuk: 'grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4',
   kucuk: 'grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6',
@@ -77,8 +80,15 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
   /* bugünün siparişleri ve menü: mutfak "hazır" dediğinde ya da menü değiştiğinde anında, ayrıca düzenli aralıkla tazelenir */
   const bagli = useCanli(kanal, (konu) => {
     if (konu === 'siparis') void siparisleriYukle()
-    else if (konu === 'menu') void menuYukle(slug, true)
+    else if (konu === 'menu') {
+      void menuYukle(slug, true)
+      void kasaSecenekYukle()
+    }
   })
+  const secenekVeri = useKasaSecenek()
+  useEffect(() => {
+    void kasaSecenekYukle()
+  }, [])
   useTazele(() => void siparisleriYukle(), bagli, 30_000)
 
   useEffect(() => {
@@ -105,13 +115,20 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
     for (const k of menu.kategoriler) for (const u of k.urunler) harita.set(u.id, u)
     const s: Satir[] = []
     const d: string[] = []
+    // seçenekler de güncel hâlinden okunur: kapatılan ya da silinen seçenek varsa satır düşer
+    const secenekler = new Map<string, Secim>()
+    for (const g of secenekVeri.gruplar) for (const o of g.secenekler) secenekler.set(o.id, { id: o.id, grup: g.ad, ad: o.ad, fiyat: o.fiyat })
     for (const x of sepet) {
       const u = harita.get(x.urunId)
-      if (!u || u.tukendi) d.push(x.ad)
-      else s.push({ ...x, ad: u.ad, fiyat: u.fiyat })
+      const sec = (x.secenekler ?? []).map((o) => secenekler.get(o.id))
+      if (!u || u.tukendi || sec.some((o) => !o)) d.push(x.ad)
+      else {
+        const guncel = sec as Secim[]
+        s.push({ ...x, ad: u.ad, secenekler: guncel, fiyat: u.fiyat + guncel.reduce((t, o) => t + o.fiyat, 0) })
+      }
     }
     return { satirlar: s, dusenler: d }
-  }, [sepet, menu])
+  }, [sepet, menu, secenekVeri])
   const adetler = useMemo(() => {
     const m = new Map<string, number>()
     for (const s of satirlar) m.set(s.urunId, (m.get(s.urunId) ?? 0) + s.adet)
@@ -133,13 +150,13 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
   const urunAdedi = satirlar.reduce((t, s) => t + s.adet, 0)
   const aktifKategori = kategori === 'tum' || menu?.kategoriler.some((k) => k.id === kategori) ? kategori : 'tum'
 
-  const ekle = (u: MenuUrun) => {
+  const ekle = (u: MenuUrun, sec: Secim[] = []) => {
     setUyari('')
     setSepet((l) => {
-      const a = anahtar(u.id, '')
+      const a = anahtar(u.id, '', sec)
       const var_ = l.find((s) => s.anahtar === a)
       if (var_) return var_.adet >= 99 ? l : l.map((s) => (s.anahtar === a ? { ...s, adet: s.adet + 1 } : s))
-      return [...l, { anahtar: a, urunId: u.id, ad: u.ad, fiyat: u.fiyat, adet: 1, not: '' }]
+      return [...l, { anahtar: a, urunId: u.id, ad: u.ad, fiyat: u.fiyat + sec.reduce((t, o) => t + o.fiyat, 0), adet: 1, not: '', secenekler: sec }]
     })
   }
   const adetDegistir = (a: string, fark: number) =>
@@ -148,7 +165,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
     setSepet((l) => {
       const satir = l.find((s) => s.anahtar === a)
       if (!satir) return l
-      const yeni = anahtar(satir.urunId, not)
+      const yeni = anahtar(satir.urunId, not, satir.secenekler)
       if (yeni === a) return l.map((s) => (s.anahtar === a ? { ...s, not } : s))
       const hedef = l.find((s) => s.anahtar === yeni)
       /* aynı ürün aynı notla zaten sepetteyse iki satır birleşir */
@@ -156,7 +173,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
       return l.map((s) => (s.anahtar === a ? { ...s, anahtar: yeni, not } : s))
     })
   const urunDokun = async (u: MenuUrun) => {
-    if (!stokModu) return ekle(u)
+    if (!stokModu) return urunGruplari(secenekVeri, u.id).length ? setAcik({ t: 'secenek', urun: u }) : ekle(u)
     /* tükendi işareti ürünün NearMenu'deki kaydını değiştirir: QR menüde de aynı anda görünür */
     const s = await tukendiAyarla(slug, u.id, !u.tukendi)
     setUyari(s.tamam ? '' : s.hata)
@@ -166,7 +183,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
     if (tamamlaniyor.current || !satirlar.length) return
     tamamlaniyor.current = true
     setKaydediliyor(true)
-    const s = await siparisOlustur({ kalemler: satirlar.map(({ urunId, adet, not }) => ({ urunId, adet, not })), tur, odeme, istek, indirim })
+    const s = await siparisOlustur({ kalemler: satirlar.map(({ urunId, adet, not, secenekler }) => ({ urunId, adet, not, secenekler: secenekler?.map((o) => o.id) })), tur, odeme, istek, indirim })
     tamamlaniyor.current = false
     setKaydediliyor(false)
     if (!s.tamam || !s.siparis) {
@@ -297,6 +314,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
                   {g.urunler.map((u) => {
                     const tukendi = u.tukendi
                     const adet = adetler.get(u.id) ?? 0
+                    const secenekli = urunGruplari(secenekVeri, u.id).length > 0
                     if (gorunum === 'liste')
                       return (
                         <button
@@ -311,7 +329,10 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
                           {tukendi ? (
                             <span className="flex-none text-xs font-semibold text-warn">Tükendi</span>
                           ) : (
-                            <span className="flex-none text-sm text-muted tabular-nums">{tl(u.fiyat)}</span>
+                            <span className="flex-none text-right text-sm text-muted tabular-nums">
+                              {tl(u.fiyat)}
+                              {secenekli && <span className="block text-[11px] font-semibold text-gold">seçenekli</span>}
+                            </span>
                           )}
                           {adet > 0 && <span className="grid h-7 min-w-7 flex-none place-items-center rounded-full bg-gold px-1.5 text-sm font-bold text-on-gold tabular-nums">{adet}</span>}
                         </button>
@@ -330,7 +351,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
                         <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/5" />
                         <span className={`absolute inset-x-0 bottom-0 text-white ${kucuk ? 'p-1.5 sm:p-2' : 'p-2.5 sm:p-3'}`}>
                           <span className={`line-clamp-2 leading-tight font-semibold ${kucuk ? 'text-[13px]' : 'text-[15px]'}`}>{u.ad}</span>
-                          <span className={`mt-0.5 block tabular-nums opacity-90 ${kucuk ? 'text-xs' : 'text-sm'}`}>{tl(u.fiyat)}</span>
+                          <span className={`mt-0.5 block tabular-nums opacity-90 ${kucuk ? 'text-xs' : 'text-sm'}`}>{tl(u.fiyat)}{secenekli ? ' +' : ''}</span>
                         </span>
                         {adet > 0 && <span className={`absolute grid place-items-center rounded-full bg-gold font-bold text-on-gold tabular-nums ${kucuk ? 'top-1 right-1 h-6 min-w-6 px-1 text-xs' : 'top-2 right-2 h-7 min-w-7 px-1.5 text-sm'}`}>{adet}</span>}
                         {tukendi && (
@@ -435,6 +456,14 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
           </div>
         </Pencere>
       )}
+      {acik?.t === 'secenek' && (
+        <SecenekPenceresi
+          urun={acik.urun}
+          gruplar={urunGruplari(secenekVeri, acik.urun.id)}
+          ekle={(sec) => { ekle(acik.urun, sec); setAcik(null) }}
+          kapat={() => setAcik(null)}
+        />
+      )}
       {acik?.t === 'gorunum' && (
         <Pencere baslik="Ürün görünümü" kapat={() => setAcik(null)}>
           <p className="text-sm text-muted">Yalnızca bu cihazı değiştirir. İşletmenin bütün kasaları için varsayılanı Yönetim › İşletme'den sahip belirler.</p>
@@ -511,6 +540,7 @@ function Sepet(p: {
               <li key={s.anahtar} className="flex items-center gap-2 py-2.5">
                 <button type="button" onClick={() => p.notAc(s.anahtar)} className="min-w-0 flex-1 rounded-lg py-1 text-left">
                   <span className="block truncate text-[15px] font-semibold">{s.ad}</span>
+                  {s.secenekler && s.secenekler.length > 0 && <span className="block truncate text-[13px] text-text/80">{secimYazisi(s.secenekler)}</span>}
                   <span className="flex items-center gap-1.5 text-[13px] text-muted">
                     <span className="tabular-nums">{tl(s.fiyat * s.adet)}</span>
                     <span aria-hidden="true">·</span>
@@ -636,7 +666,7 @@ function SiparislerPenceresi({ liste, yazdir, gunSonu, kapat }: { liste: Siparis
                 </button>
               )}
             </div>
-            <p className="mt-1.5 truncate pl-15 text-xs text-muted">{s.kalemler.map((k) => `${k.adet}× ${k.ad}`).join(', ')}</p>
+            <p className="mt-1.5 truncate pl-15 text-xs text-muted">{s.kalemler.map((k) => `${k.adet}× ${k.ad}${k.secenekler.length ? ` (${secimYazisi(k.secenekler)})` : ''}`).join(', ')}</p>
             {s.durum !== 'iptal' && s.mali && (
               <div className="mt-1 pl-15">
                 <MaliFis mali={s.mali} kimlik={s.id} isaretle={(k, n) => maliIsaretle(s.id, k, n)} />

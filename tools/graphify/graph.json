@@ -146,6 +146,13 @@
    "file": "src/components/QrKod.tsx"
   },
   {
+   "id": "src:components/SecenekPenceresi",
+   "label": "SecenekPenceresi",
+   "type": "comp",
+   "desc": "Kasada seçenekli ürün eklerken açılır: boy (tek seçim), ekstralar ve çıkarılacaklar (çoklu seçim). Fiyat anında güncellenir.",
+   "file": "src/components/SecenekPenceresi.tsx"
+  },
+  {
    "id": "src:components/TemaDugmesi",
    "label": "TemaDugmesi",
    "type": "comp",
@@ -238,10 +245,28 @@
    "desc": "Tetra tablosu (private.tetra_personel); ilk tanım: 001_tetra_temel.sql. API'den doğrudan erişilemez, yalnızca sunucu işlevleriyle okunur/yazılır."
   },
   {
+   "id": "tbl:private.tetra_secenek",
+   "label": "tetra_secenek",
+   "type": "data",
+   "desc": "Tetra tablosu (private.tetra_secenek); ilk tanım: 014_secenekler.sql. API'den doğrudan erişilemez, yalnızca sunucu işlevleriyle okunur/yazılır."
+  },
+  {
+   "id": "tbl:private.tetra_secenek_grup",
+   "label": "tetra_secenek_grup",
+   "type": "data",
+   "desc": "Tetra tablosu (private.tetra_secenek_grup); ilk tanım: 014_secenekler.sql. API'den doğrudan erişilemez, yalnızca sunucu işlevleriyle okunur/yazılır."
+  },
+  {
    "id": "tbl:private.tetra_siparis",
    "label": "tetra_siparis",
    "type": "data",
    "desc": "Tetra tablosu (private.tetra_siparis); ilk tanım: 001_tetra_temel.sql. API'den doğrudan erişilemez, yalnızca sunucu işlevleriyle okunur/yazılır."
+  },
+  {
+   "id": "tbl:private.tetra_urun_grup",
+   "label": "tetra_urun_grup",
+   "type": "data",
+   "desc": "Tetra tablosu (private.tetra_urun_grup); ilk tanım: 014_secenekler.sql. API'den doğrudan erişilemez, yalnızca sunucu işlevleriyle okunur/yazılır."
   },
   {
    "id": "edge:worker",
@@ -429,6 +454,13 @@
    "file": "sunucu/001_tetra_temel.sql"
   },
   {
+   "id": "fn:tetra_secenek_veri",
+   "label": "tetra_secenek_veri",
+   "type": "fn",
+   "desc": "Tanım: 014_secenekler.sql.",
+   "file": "sunucu/014_secenekler.sql"
+  },
+  {
    "id": "fn:tetra_siparis_json",
    "label": "tetra_siparis_json",
    "type": "fn",
@@ -525,6 +557,13 @@
    "type": "js",
    "desc": "Fiyatlar kuruş olarak (tam sayı) tutulur; ekranda Türk lirası biçiminde gösterilir.",
    "file": "src/lib/para.ts"
+  },
+  {
+   "id": "src:lib/secenek",
+   "label": "secenek",
+   "type": "js",
+   "desc": "Ürün seçenekleri: boy, ekstralar, çıkarılacaklar. İşletme sahibi seçenek gruplarını Yönetim › Menü › Seçenek grupları'ndan tanımlar ve ürünlere bağlar. Kasa açık seçenekleri okur; seçim kuralları burada da denetlenir ama asıl doğrulama ve fiyatlama sunucudadır.",
+   "file": "src/lib/secenek.ts"
   },
   {
    "id": "src:lib/secili",
@@ -690,6 +729,13 @@
    "file": "src/pages/yonetim/Raporlar.tsx"
   },
   {
+   "id": "src:pages/yonetim/SecenekGruplari",
+   "label": "SecenekGruplari (Yönetim bölümü)",
+   "type": "page",
+   "desc": "Seçenek grupları: boy, ekstralar, çıkarılacaklar. Grup birden çok ürüne bağlanabilir; değişiklik kasaya hemen yansır.",
+   "file": "src/pages/yonetim/SecenekGruplari.tsx"
+  },
+  {
    "id": "src:pages/Takip",
    "label": "Takip (/t/:kod)",
    "type": "page",
@@ -832,6 +878,13 @@
    "file": "sunucu/008_kasa_gorunum.sql"
   },
   {
+   "id": "fn:tetra_kasa_secenekler",
+   "label": "tetra_kasa_secenekler",
+   "type": "rpc",
+   "desc": "kasa (cihaz + personel oturumu): yalnızca açık seçenekler Tanım: 014_secenekler.sql.",
+   "file": "sunucu/014_secenekler.sql"
+  },
+  {
    "id": "fn:tetra_kdv_kaydet",
    "label": "tetra_kdv_kaydet",
    "type": "rpc",
@@ -930,6 +983,27 @@
    "file": "sunucu/007_mali.sql"
   },
   {
+   "id": "fn:tetra_secenek_grup_kaydet",
+   "label": "tetra_secenek_grup_kaydet",
+   "type": "rpc",
+   "desc": "p_grup: {\"id\": uuid|null, \"ad\", \"tur\": \"tek\"|\"coklu\", \"zorunlu\": bool, \"en_fazla\": int|null, \"secenekler\": [{\"id\": uuid|null, \"ad\", \"fiyat\": kuruş, \"varsayilan\": bool, \"aktif\": bool}], \"urunler\": [uuid, ...]} Tanım: 014_secenekler.sql.",
+   "file": "sunucu/014_secenekler.sql"
+  },
+  {
+   "id": "fn:tetra_secenek_grup_sil",
+   "label": "tetra_secenek_grup_sil",
+   "type": "rpc",
+   "desc": "Tanım: 014_secenekler.sql.",
+   "file": "sunucu/014_secenekler.sql"
+  },
+  {
+   "id": "fn:tetra_secenek_liste",
+   "label": "tetra_secenek_liste",
+   "type": "rpc",
+   "desc": "yönetim (işletme sahibi) Tanım: 014_secenekler.sql.",
+   "file": "sunucu/014_secenekler.sql"
+  },
+  {
    "id": "fn:tetra_siparis_durum",
    "label": "tetra_siparis_durum",
    "type": "rpc",
@@ -940,8 +1014,8 @@
    "id": "fn:tetra_siparis_olustur",
    "label": "tetra_siparis_olustur",
    "type": "rpc",
-   "desc": "sipariş: fiyat ve tutar sunucuda, menüdeki güncel fiyattan hesaplanır Tanım: 001_tetra_temel.sql, 007_mali.sql, 012_indirim.sql.",
-   "file": "sunucu/012_indirim.sql"
+   "desc": "kalem: {\"urun_id\", \"adet\", \"not\", \"secenekler\": [secenek_id, ...]} kaydedilen kalem: fiyat = birim fiyat (ürün + seçenekler), taban = ürün fiyatı, secenekler = [{\"grup\",\"ad\",\"fiyat\"}] Tanım: 001_tetra_temel.sql, 007_mali.sql, 012_indirim.sql, 014_secenekler.sql.",
+   "file": "sunucu/014_secenekler.sql"
   },
   {
    "id": "fn:tetra_siparisler",
@@ -1061,6 +1135,13 @@
    "type": "tool",
    "desc": "Tetra · güvenlik sıkılaştırmaları 1) PIN denemesi: kilit süreleri büyür (5 hatada 1 dk, 10'da 10 dk, 15 ve sonrası her 5 hatada 60 dk); sayaç 6 saatte sıfırlanır. 2) Cihaz silinince işletmenin canlı bildirim kanalı değişir: silinen cihaz eski kanalı dinlemeye devam edemez.",
    "file": "sunucu/013_guvenlik.sql"
+  },
+  {
+   "id": "sql:014_secenekler",
+   "label": "014_secenekler.sql",
+   "type": "tool",
+   "desc": "Tetra · ürün seçenekleri: boy, ekstralar, çıkarılacaklar İşletme sahibi seçenek grupları tanımlar (tek ya da çoklu seçim, zorunlu, en fazla seçim) ve grupları ürünlere bağlar. Kasada seçilen seçenekler sunucuda doğrulanır ve fiyatlanır: birim fiyat = ürün fiyatı + seçenek farkları. NearMenu tabloları değişmez; seçenekler Tetra'nın kendi tablolarında tutulur.",
+   "file": "sunucu/014_secenekler.sql"
   }
  ],
  "edges": [
@@ -1450,6 +1531,26 @@
    "rel": "yazar"
   },
   {
+   "from": "fn:tetra_kasa_secenekler",
+   "to": "fn:tetra_cihaz_bul",
+   "rel": "çağırır"
+  },
+  {
+   "from": "fn:tetra_kasa_secenekler",
+   "to": "fn:tetra_oturum_sart",
+   "rel": "çağırır"
+  },
+  {
+   "from": "fn:tetra_kasa_secenekler",
+   "to": "fn:tetra_secenek_veri",
+   "rel": "çağırır"
+  },
+  {
+   "from": "fn:tetra_kasa_secenekler",
+   "to": "tbl:private.tetra_cihaz",
+   "rel": "okur"
+  },
+  {
    "from": "fn:tetra_kdv_kaydet",
    "to": "fn:tetra_sahip_sart",
    "rel": "çağırır"
@@ -1785,6 +1886,76 @@
    "rel": "okur"
   },
   {
+   "from": "fn:tetra_secenek_grup_kaydet",
+   "to": "fn:tetra_duyur",
+   "rel": "çağırır"
+  },
+  {
+   "from": "fn:tetra_secenek_grup_kaydet",
+   "to": "fn:tetra_sahip_sart",
+   "rel": "çağırır"
+  },
+  {
+   "from": "fn:tetra_secenek_grup_kaydet",
+   "to": "tbl:private.tetra_secenek",
+   "rel": "yazar"
+  },
+  {
+   "from": "fn:tetra_secenek_grup_kaydet",
+   "to": "tbl:private.tetra_secenek_grup",
+   "rel": "yazar"
+  },
+  {
+   "from": "fn:tetra_secenek_grup_kaydet",
+   "to": "tbl:private.tetra_urun_grup",
+   "rel": "yazar"
+  },
+  {
+   "from": "fn:tetra_secenek_grup_kaydet",
+   "to": "tbl:public.products",
+   "rel": "okur"
+  },
+  {
+   "from": "fn:tetra_secenek_grup_sil",
+   "to": "fn:tetra_duyur",
+   "rel": "çağırır"
+  },
+  {
+   "from": "fn:tetra_secenek_grup_sil",
+   "to": "fn:tetra_sahip_sart",
+   "rel": "çağırır"
+  },
+  {
+   "from": "fn:tetra_secenek_grup_sil",
+   "to": "tbl:private.tetra_secenek_grup",
+   "rel": "yazar"
+  },
+  {
+   "from": "fn:tetra_secenek_liste",
+   "to": "fn:tetra_sahip_sart",
+   "rel": "çağırır"
+  },
+  {
+   "from": "fn:tetra_secenek_liste",
+   "to": "fn:tetra_secenek_veri",
+   "rel": "çağırır"
+  },
+  {
+   "from": "fn:tetra_secenek_veri",
+   "to": "tbl:private.tetra_secenek",
+   "rel": "okur"
+  },
+  {
+   "from": "fn:tetra_secenek_veri",
+   "to": "tbl:private.tetra_secenek_grup",
+   "rel": "okur"
+  },
+  {
+   "from": "fn:tetra_secenek_veri",
+   "to": "tbl:private.tetra_urun_grup",
+   "rel": "okur"
+  },
+  {
    "from": "fn:tetra_siparis_durum",
    "to": "fn:tetra_cihaz_bul",
    "rel": "çağırır"
@@ -1876,8 +2047,23 @@
   },
   {
    "from": "fn:tetra_siparis_olustur",
+   "to": "tbl:private.tetra_secenek",
+   "rel": "okur"
+  },
+  {
+   "from": "fn:tetra_siparis_olustur",
+   "to": "tbl:private.tetra_secenek_grup",
+   "rel": "okur"
+  },
+  {
+   "from": "fn:tetra_siparis_olustur",
    "to": "tbl:private.tetra_siparis",
    "rel": "yazar"
+  },
+  {
+   "from": "fn:tetra_siparis_olustur",
+   "to": "tbl:private.tetra_urun_grup",
+   "rel": "okur"
   },
   {
    "from": "fn:tetra_siparis_olustur",
@@ -2235,11 +2421,6 @@
    "rel": "tanımlar"
   },
   {
-   "from": "sql:012_indirim",
-   "to": "fn:tetra_siparis_olustur",
-   "rel": "tanımlar"
-  },
-  {
    "from": "sql:013_guvenlik",
    "to": "fn:tetra_cihaz_sil",
    "rel": "tanımlar"
@@ -2247,6 +2428,36 @@
   {
    "from": "sql:013_guvenlik",
    "to": "fn:tetra_hata_say",
+   "rel": "tanımlar"
+  },
+  {
+   "from": "sql:014_secenekler",
+   "to": "fn:tetra_kasa_secenekler",
+   "rel": "tanımlar"
+  },
+  {
+   "from": "sql:014_secenekler",
+   "to": "fn:tetra_secenek_grup_kaydet",
+   "rel": "tanımlar"
+  },
+  {
+   "from": "sql:014_secenekler",
+   "to": "fn:tetra_secenek_grup_sil",
+   "rel": "tanımlar"
+  },
+  {
+   "from": "sql:014_secenekler",
+   "to": "fn:tetra_secenek_liste",
+   "rel": "tanımlar"
+  },
+  {
+   "from": "sql:014_secenekler",
+   "to": "fn:tetra_secenek_veri",
+   "rel": "tanımlar"
+  },
+  {
+   "from": "sql:014_secenekler",
+   "to": "fn:tetra_siparis_olustur",
    "rel": "tanımlar"
   },
   {
@@ -2470,6 +2681,36 @@
    "rel": "kullanır"
   },
   {
+   "from": "src:components/SecenekPenceresi",
+   "to": "src:components/Ikon",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:components/SecenekPenceresi",
+   "to": "src:components/Pencere",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:components/SecenekPenceresi",
+   "to": "src:components/bicim",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:components/SecenekPenceresi",
+   "to": "src:lib/menu",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:components/SecenekPenceresi",
+   "to": "src:lib/para",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:components/SecenekPenceresi",
+   "to": "src:lib/secenek",
+   "rel": "kullanır"
+  },
+  {
    "from": "src:components/TemaDugmesi",
    "to": "src:components/Ikon",
    "rel": "kullanır"
@@ -2651,6 +2892,36 @@
   },
   {
    "from": "src:lib/oturum",
+   "to": "src:lib/sunucu",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:lib/secenek",
+   "to": "fn:tetra_kasa_secenekler",
+   "rel": "çağırır"
+  },
+  {
+   "from": "src:lib/secenek",
+   "to": "fn:tetra_secenek_grup_kaydet",
+   "rel": "çağırır"
+  },
+  {
+   "from": "src:lib/secenek",
+   "to": "fn:tetra_secenek_grup_sil",
+   "rel": "çağırır"
+  },
+  {
+   "from": "src:lib/secenek",
+   "to": "fn:tetra_secenek_liste",
+   "rel": "çağırır"
+  },
+  {
+   "from": "src:lib/secenek",
+   "to": "src:lib/oturum",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:lib/secenek",
    "to": "src:lib/sunucu",
    "rel": "kullanır"
   },
@@ -2891,6 +3162,11 @@
   },
   {
    "from": "src:pages/Kasa",
+   "to": "src:components/SecenekPenceresi",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/Kasa",
    "to": "src:components/TemaDugmesi",
    "rel": "kullanır"
   },
@@ -2932,6 +3208,11 @@
   {
    "from": "src:pages/Kasa",
    "to": "src:lib/para",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/Kasa",
+   "to": "src:lib/secenek",
    "rel": "kullanır"
   },
   {
@@ -3321,12 +3602,27 @@
   },
   {
    "from": "src:pages/yonetim/Menu",
+   "to": "src:lib/secenek",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/Menu",
    "to": "src:lib/secili",
    "rel": "kullanır"
   },
   {
    "from": "src:pages/yonetim/Menu",
+   "to": "src:lib/sunucu",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/Menu",
    "to": "src:lib/veri",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/Menu",
+   "to": "src:pages/yonetim/SecenekGruplari",
    "rel": "kullanır"
   },
   {
@@ -3417,6 +3713,46 @@
   {
    "from": "src:pages/yonetim/Raporlar",
    "to": "src:lib/veri",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/SecenekGruplari",
+   "to": "src:components/Anahtar",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/SecenekGruplari",
+   "to": "src:components/Ikon",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/SecenekGruplari",
+   "to": "src:components/Onay",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/SecenekGruplari",
+   "to": "src:components/Pencere",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/SecenekGruplari",
+   "to": "src:components/bicim",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/SecenekGruplari",
+   "to": "src:lib/menu",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/SecenekGruplari",
+   "to": "src:lib/para",
+   "rel": "kullanır"
+  },
+  {
+   "from": "src:pages/yonetim/SecenekGruplari",
+   "to": "src:lib/secenek",
    "rel": "kullanır"
   }
  ]

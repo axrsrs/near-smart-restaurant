@@ -13,7 +13,8 @@ export type CihazKaydi = { id: string; ekran: CihazEkrani; ad: string; son_gorul
 export type SiparisTuru = 'burada' | 'paket'
 export type Odeme = 'nakit' | 'kart'
 export type SiparisDurumu = 'hazirlaniyor' | 'hazir' | 'teslim' | 'iptal'
-export type Kalem = { urunId: string; ad: string; fiyat: number; adet: number; not: string; kdv: number | null }
+/** Sipariş kalemi. fiyat: birim fiyat (ürün + seçenekler), taban: ürünün kendi fiyatı (seçenek varsa). */
+export type Kalem = { urunId: string; ad: string; fiyat: number; adet: number; not: string; kdv: number | null; taban?: number; secenekler: { grup: string; ad: string; fiyat: number }[] }
 export type KdvOrani = 1 | 10 | 20
 export const KDV_ORANLARI: KdvOrani[] = [1, 10, 20]
 /** Mali fiş durumu. null: sipariş takip dışında (takip kapalıyken ya da özellikten önce alınmış). */
@@ -55,7 +56,7 @@ type HamSiparis = {
   tur: SiparisTuru
   durum: SiparisDurumu
   gun?: string
-  kalemler: { urun_id: string; ad: string; fiyat: number; adet: number; not: string; kdv?: number }[]
+  kalemler: { urun_id: string; ad: string; fiyat: number; adet: number; not: string; kdv?: number; taban?: number; secenekler?: { grup: string; ad: string; fiyat: number }[] }[]
   personel_ad: string
   odeme?: Odeme
   toplam?: number
@@ -69,7 +70,7 @@ const cevir = (h: HamSiparis): Siparis => ({
   kod: h.takip_kod ?? '',
   no: h.no,
   zaman: Date.parse(h.zaman),
-  kalemler: (h.kalemler ?? []).map((k) => ({ urunId: k.urun_id, ad: k.ad, fiyat: k.fiyat, adet: k.adet, not: k.not ?? '', kdv: typeof k.kdv === 'number' ? k.kdv : null })),
+  kalemler: (h.kalemler ?? []).map((k) => ({ urunId: k.urun_id, ad: k.ad, fiyat: k.fiyat, adet: k.adet, not: k.not ?? '', kdv: typeof k.kdv === 'number' ? k.kdv : null, taban: k.taban, secenekler: Array.isArray(k.secenekler) ? k.secenekler : [] })),
   toplam: h.toplam ?? 0,
   tur: h.tur,
   odeme: h.odeme ?? 'nakit',
@@ -128,10 +129,10 @@ export async function siparisleriYukle(): Promise<Sonuc & { liste?: Siparis[] }>
 }
 
 /** Siparişi sunucuya yazar. Fiyat gönderilmez: tutarı sunucu menüden hesaplar. Aynı istek kimliği yinelenirse tek sipariş oluşur. */
-export async function siparisOlustur(s: { kalemler: { urunId: string; adet: number; not: string }[]; tur: SiparisTuru; odeme: Odeme; istek: string; indirim?: IndirimIstegi | null }): Promise<Sonuc & { siparis?: Siparis }> {
+export async function siparisOlustur(s: { kalemler: { urunId: string; adet: number; not: string; secenekler?: string[] }[]; tur: SiparisTuru; odeme: Odeme; istek: string; indirim?: IndirimIstegi | null }): Promise<Sonuc & { siparis?: Siparis }> {
   try {
     const y = await cihazCagir<Yanit & { siparis?: HamSiparis }>('tetra_siparis_olustur', {
-      p_kalemler: s.kalemler.map((k) => ({ urun_id: k.urunId, adet: k.adet, not: k.not })),
+      p_kalemler: s.kalemler.map((k) => ({ urun_id: k.urunId, adet: k.adet, not: k.not, ...(k.secenekler?.length ? { secenekler: k.secenekler } : {}) })),
       p_tur: s.tur,
       p_odeme: s.odeme,
       p_istek: s.istek,

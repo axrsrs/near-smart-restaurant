@@ -21,6 +21,9 @@ export default function Fis({ siparis, isletmeAd }: { siparis: Siparis; isletmeA
         <div key={i} className="fis-satir">
           <span>
             {k.adet} × {k.ad}
+            {k.secenekler.map((o, j) => (
+              <em key={j}>{o.ad}{o.fiyat > 0 ? ` +${tl(o.fiyat)}` : ''}</em>
+            ))}
             {k.not && <em>Not: {k.not}</em>}
           </span>
           <span>{tl(k.fiyat * k.adet)}</span>
