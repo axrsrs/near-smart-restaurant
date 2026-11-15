@@ -93,11 +93,12 @@ const ayarla = (l: Siparis[]) => {
 }
 
 /** Bugünün siparişlerini sunucudan okur. */
-export async function siparisleriYukle(): Promise<Sonuc> {
+export async function siparisleriYukle(): Promise<Sonuc & { liste?: Siparis[] }> {
   try {
     const y = await cihazCagir<{ siparisler: HamSiparis[] }>('tetra_siparisler')
-    ayarla(y.siparisler.map(cevir))
-    return { tamam: true }
+    const liste = y.siparisler.map(cevir)
+    ayarla(liste)
+    return { tamam: true, liste }
   } catch (e) {
     return { tamam: false, hata: hataMetni(e) }
   }
@@ -178,7 +179,9 @@ export type Rapor = {
 export const raporOku = (isletme: string, bas: string, bit: string) => cagir<Rapor>('tetra_rapor', { p_restaurant: isletme, p_bas: bas, p_bit: bit })
 
 /* ───────── mali ayarlar, ürün KDV oranları, fişi kesilmemiş siparişler (işletme sahibi) ───────── */
-export type MaliAyar = { kdv_varsayilan: KdvOrani; mali_takip: boolean; kasa_gorunum?: string; urunler: Record<string, KdvOrani> }
+export type MaliAyar = { kdv_varsayilan: KdvOrani; mali_takip: boolean; kasa_gorunum?: string; mutfak_fisi?: MutfakFisiYeri; urunler: Record<string, KdvOrani> }
+export type MutfakFisiYeri = 'kapali' | 'kasa' | 'mutfak'
+export const mutfakFisiKaydet = (isletme: string, yer: MutfakFisiYeri) => dene(() => cagir<Yanit>('tetra_mutfak_fisi_kaydet', { p_restaurant: isletme, p_yer: yer }))
 /** İşletmenin bütün kasaları için varsayılan ürün görünümü (her kasa kendi cihazında değiştirebilir). */
 export const kasaGorunumKaydet = (isletme: string, gorunum: string) => dene(() => cagir<Yanit>('tetra_kasa_gorunum_kaydet', { p_restaurant: isletme, p_gorunum: gorunum }))
 export const maliAyarOku = (isletme: string) => cagir<MaliAyar>('tetra_mali_ayar_oku', { p_restaurant: isletme })

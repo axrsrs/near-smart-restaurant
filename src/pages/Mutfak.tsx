@@ -1,15 +1,32 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BTN_IKINCIL } from '../components/bicim'
+import { BTN_IKINCIL, IKON_BTN } from '../components/bicim'
 import Ikon from '../components/Ikon'
+import MutfakFis from '../components/MutfakFis'
 import TemaDugmesi from '../components/TemaDugmesi'
 import { useCanli, useTazele } from '../lib/canli'
+import { oku, yaz } from '../lib/depo'
 import { TUR_ADI } from '../lib/etiketler'
 import { kilitle, type Isletme } from '../lib/oturum'
 import { cal, sesHazirla, sesiDene, useSesAcik } from '../lib/ses'
 import { siparisDurumu, siparisleriYukle, useSiparisler, type Siparis, type SiparisDurumu } from '../lib/veri'
 
 const dakika = (z: number, simdi: number) => Math.max(0, Math.floor((simdi - z) / 60_000))
+
+/* otomatik mutfak fişi: bu cihazda açık mı (yazıcısı olmayan ikinci bir mutfak ekranında kapatılabilir) ve hangi siparişler basıldı
+   (sayfa yenilenince aynı sipariş yeniden basılmasın; bugünün kayıtları tutulur) */
+const A_YAZICI = 'tetra-mutfak-yazici'
+const A_BASILAN = 'tetra-mutfak-basilan'
+const bugun = () => new Date().toLocaleDateString('sv-SE')
+const basilanlar = (): Set<string> => {
+  const k = oku<{ gun: string; idler: string[] }>('local', A_BASILAN)
+  return new Set(k && k.gun === bugun() ? k.idler : [])
+}
+const basildi = (idler: string[]) => {
+  const s = basilanlar()
+  idler.forEach((id) => s.add(id))
+  yaz('local', A_BASILAN, { gun: bugun(), idler: [...s].slice(-300) })
+}
 
 /** Mutfak ekranı: kasadan gelen siparişler anında düşer; personel "Hazır" ve "Teslim edildi" ile ilerletir. */
 export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme; personel: { id: string; ad: string }; kanal: string }) {
@@ -21,8 +38,36 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
   const [simdi, setSimdi] = useState(() => Date.now())
   const [yeniler, setYeniler] = useState<Set<string>>(new Set())
   const bilinen = useRef<Set<string> | null>(null)
+  const mutfakFisi = isletme.mutfak_fisi === 'mutfak'
+  const [otomatikYazici, setOtomatikYazici] = useState(() => oku<boolean>('local', A_YAZICI) !== false)
+  const [basilacak, setBasilacak] = useState<{ liste: Siparis[]; sira: number } | null>(null)
+  const otomatikRef = useRef(mutfakFisi && otomatikYazici)
+  useEffect(() => {
+    otomatikRef.current = mutfakFisi && otomatikYazici
+  })
+  const yazdir = (liste: Siparis[]) => {
+    if (!liste.length) return
+    basildi(liste.map((s) => s.id))
+    setBasilacak((o) => ({ liste, sira: (o?.sira ?? 0) + 1 }))
+  }
+  useEffect(() => {
+    if (!basilacak) return
+    const sayac = setTimeout(() => window.print(), 80)
+    return () => clearTimeout(sayac)
+  }, [basilacak])
+  const yaziciDegistir = () => {
+    setOtomatikYazici((v) => {
+      yaz('local', A_YAZICI, !v)
+      return !v
+    })
+  }
 
-  const yukle = () => void siparisleriYukle().then((s) => setHata(s.tamam ? '' : s.hata))
+  const yukle = () =>
+    void siparisleriYukle().then((s) => {
+      setHata(s.tamam ? '' : s.hata)
+      // ilk başarılı okumadaki siparişler "yeni" sayılmaz: açılışta ses çalmaz, fiş basılmaz
+      if (s.tamam && !bilinen.current) bilinen.current = new Set((s.liste ?? []).map((x) => x.id))
+    })
   const bagli = useCanli(kanal, (konu) => konu === 'siparis' && yukle())
   useTazele(yukle, bagli)
 
@@ -35,12 +80,17 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
 
   /* ilk yüklemeden sonra listeye yeni giren sipariş: ses ve kısa süreli çerçeve */
   useEffect(() => {
+    if (!bilinen.current) return // ilk okuma henüz bitmedi
     const idler = new Set(siparisler.filter((s) => s.durum === 'hazirlaniyor').map((s) => s.id))
     if (bilinen.current) {
       const eski = bilinen.current
       const gelen = [...idler].filter((id) => !eski.has(id))
       if (gelen.length) {
         cal('yeni')
+        if (otomatikRef.current) {
+          const daha = basilanlar()
+          yazdir(siparisler.filter((s) => gelen.includes(s.id) && !daha.has(s.id)).sort((a, b) => a.no - b.no))
+        }
         setYeniler((y) => new Set([...y, ...gelen]))
         setTimeout(() => setYeniler((y) => new Set([...y].filter((id) => !gelen.includes(id)))), 4000)
       }
@@ -79,6 +129,11 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
           <button type="button" onClick={() => void sesiDene('yeni')} title={sesAcik ? 'Ses açık: denemek için dokunun' : 'Sesi açmak için dokunun'} aria-label={sesAcik ? 'Ses açık, sesi dene' : 'Ses kapalı, sesi aç'} className={`grid size-11 flex-none place-items-center rounded-full border border-line bg-ink-2 transition active:scale-95 ${sesAcik ? 'text-text' : 'text-warn'}`}>
             <Ikon ad={sesAcik ? 'ses' : 'sessiz'} className="size-5" />
           </button>
+          {mutfakFisi && (
+            <button type="button" aria-pressed={otomatikYazici} onClick={yaziciDegistir} title={otomatikYazici ? 'Otomatik mutfak fişi açık: kapatmak için dokunun' : 'Otomatik mutfak fişi kapalı: açmak için dokunun'} aria-label="Yeni siparişte mutfak fişini otomatik yazdır" className={`grid size-11 flex-none place-items-center rounded-full border transition active:scale-95 ${otomatikYazici ? 'border-ok/60 bg-ink-2 text-ok' : 'border-line bg-ink-2 text-muted'}`}>
+              <Ikon ad="yazici" className="size-5" />
+            </button>
+          )}
           <TemaDugmesi />
           <button type="button" onClick={() => void kilitle()} title="Ekranı kilitle" aria-label="Ekranı kilitle" className="grid size-11 flex-none place-items-center rounded-full border border-line bg-ink-2 text-text">
             <Ikon ad="kilit" className="size-5" />
@@ -110,6 +165,11 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
                       <span className="text-5xl leading-none font-bold tracking-tight tabular-nums">{s.no}</span>
                       {s.tur === 'paket' && <span className="rounded-lg bg-text px-2.5 py-1 text-sm font-bold tracking-wide text-ink">PAKET</span>}
                       <span className={`ml-auto text-sm font-semibold tabular-nums ${dk >= 15 ? 'text-danger' : dk >= 8 ? 'text-warn' : 'text-muted'}`}>{dk} dk</span>
+                      {isletme.mutfak_fisi !== 'kapali' && isletme.mutfak_fisi !== undefined && (
+                        <button type="button" onClick={() => yazdir([s])} aria-label={`${s.no} numaralı siparişin mutfak fişini yazdır`} title="Mutfak fişi yazdır" className={`${IKON_BTN} -my-1`}>
+                          <Ikon ad="yazici" className="size-[18px]" />
+                        </button>
+                      )}
                     </div>
                     <ul className="my-3 flex flex-1 flex-col gap-1.5 border-y border-line py-3">
                       {s.kalemler.map((k, i) => (
@@ -163,6 +223,7 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
           </button>
         </section>
       </div>
+      {basilacak?.liste.map((s, i) => <MutfakFis key={`${basilacak.sira}-${i}`} siparis={s} isletmeAd={isletme.ad} />)}
     </div>
   )
 }

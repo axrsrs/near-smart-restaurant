@@ -16,7 +16,7 @@ export const EKRAN_ADI: Record<Ekran, string> = { kasa: 'Kasa', mutfak: 'Mutfak'
 export const PIN_ISTEYEN: Ekran[] = ['kasa', 'mutfak']
 
 // mali: mali fiş takibi açık mı; kasa_gorunum: işletmenin varsayılan kasa ürün görünümü (ikisi de cihaz durumundan gelir)
-export type Isletme = { id: string; slug: string; ad: string; logo: string; mali?: boolean; kasa_gorunum?: 'buyuk' | 'kucuk' | 'liste' }
+export type Isletme = { id: string; slug: string; ad: string; logo: string; mali?: boolean; kasa_gorunum?: 'buyuk' | 'kucuk' | 'liste'; mutfak_fisi?: 'kapali' | 'kasa' | 'mutfak' }
 export type IsletmeKaydi = Isletme & { rol: string; tetra: boolean; abonelik: boolean; gorunum: Gorunum | null }
 export type Yonetici =
   | { durum: 'yukleniyor' }

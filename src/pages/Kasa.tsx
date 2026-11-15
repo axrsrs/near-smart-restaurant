@@ -6,6 +6,7 @@ import GunSonuFis from '../components/GunSonuFis'
 import GunSonuPenceresi, { type GunSonuBaski } from '../components/GunSonuPenceresi'
 import Ikon from '../components/Ikon'
 import MaliFis from '../components/MaliFis'
+import MutfakFis from '../components/MutfakFis'
 import Pencere from '../components/Pencere'
 import QrKod from '../components/QrKod'
 import TemaDugmesi from '../components/TemaDugmesi'
@@ -60,7 +61,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
   const [tur, setTur] = useState<SiparisTuru>('burada')
   const [stokModu, setStokModu] = useState(false)
   const [acik, setAcik] = useState<Acik>(null)
-  const [basilacak, setBasilacak] = useState<{ siparis: Siparis; sira: number } | null>(null)
+  const [basilacak, setBasilacak] = useState<{ siparis: Siparis; sira: number; mutfak: boolean } | null>(null)
   const [basilacakGun, setBasilacakGun] = useState<{ baski: GunSonuBaski; sira: number } | null>(null)
   const [uyari, setUyari] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
@@ -84,7 +85,9 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
     return () => clearTimeout(sayac)
   }, [basilacak, basilacakGun])
   // aynı anda tek fiş sayfada durur: sipariş fişi ya da gün sonu raporu
-  const yazdir = (siparis: Siparis) => { setBasilacakGun(null); setBasilacak((o) => ({ siparis, sira: (o?.sira ?? 0) + 1 })) }
+  // mutfak fişi "kasada" seçiliyse sipariş alındığında müşteri fişinin ardından fiyatsız mutfak fişi de basılır
+  const kasadaMutfakFisi = isletme.mutfak_fisi === 'kasa'
+  const yazdir = (siparis: Siparis, mutfak = false) => { setBasilacakGun(null); setBasilacak((o) => ({ siparis, sira: (o?.sira ?? 0) + 1, mutfak })) }
   const gunSonuYazdir = (baski: GunSonuBaski) => { setBasilacak(null); setBasilacakGun((o) => ({ baski, sira: (o?.sira ?? 0) + 1 })) }
 
   /* Sepet her zaman güncel menüye göre okunur: fiyat ve ad menüden gelir (sepette saklanan fiyata güvenilmez),
@@ -165,7 +168,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
     setSepet([])
     setTur('burada')
     setAcik({ t: 'tamam', siparis: s.siparis })
-    if (otomatikFis) yazdir(s.siparis)
+    if (otomatikFis) yazdir(s.siparis, kasadaMutfakFisi)
   }
 
   const sepetIcerik = (
@@ -385,9 +388,9 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
             <Anahtar acik={otomatikFis} degistir={otomatikFisAyarla} etiket="Fişi otomatik yazdır" />
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2.5">
-            <button type="button" onClick={() => yazdir(acik.siparis)} className={BTN_IKINCIL}>
+            <button type="button" onClick={() => yazdir(acik.siparis, kasadaMutfakFisi)} className={BTN_IKINCIL}>
               <Ikon ad="yazici" className="size-4" />
-              Fiş yazdır
+              {kasadaMutfakFisi ? 'Fişleri yazdır' : 'Fiş yazdır'}
             </button>
             <button type="button" data-ilk onClick={() => setAcik(null)} className={BTN_ANA}>Yeni sipariş</button>
           </div>
@@ -423,6 +426,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
       {acik?.t === 'siparisler' && <SiparislerPenceresi liste={bugunku} yazdir={yazdir} gunSonu={() => setAcik({ t: 'gunsonu' })} kapat={() => setAcik(null)} />}
       {acik?.t === 'gunsonu' && <GunSonuPenceresi yazdir={gunSonuYazdir} kapat={() => setAcik(null)} />}
       {basilacak && <Fis key={basilacak.sira} siparis={basilacak.siparis} isletmeAd={isletmeAd} />}
+      {basilacak?.mutfak && <MutfakFis key={`m${basilacak.sira}`} siparis={basilacak.siparis} isletmeAd={isletmeAd} />}
       {basilacakGun && <GunSonuFis key={basilacakGun.sira} ozet={basilacakGun.baski.ozet} kapanis={basilacakGun.baski.kapanis} isletmeAd={isletmeAd} kasiyer={personel.ad} />}
     </div>
   )

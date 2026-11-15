@@ -6,6 +6,7 @@ import { useSeciliIsletme } from '../../lib/secili'
 import GorunumAyari from './Gorunum'
 import KasaAyari from './KasaAyari'
 import MaliAyari from './Mali'
+import MutfakFisiAyari from './MutfakFisiAyari'
 
 /** İşletme bilgisi ve NearMenu bağlantısı: ürünler, fiyatlar, fotoğraflar, ad ve logo NearMenu'deki kayıttan gelir. */
 export default function Isletme() {
@@ -53,6 +54,7 @@ export default function Isletme() {
       </div>
     </section>
     <KasaAyari />
+    <MutfakFisiAyari />
     <MaliAyari />
     <GorunumAyari />
     </>
