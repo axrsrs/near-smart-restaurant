@@ -40,12 +40,13 @@ async function bitir(slug: string, isletme: string, hata: unknown): Promise<Sonu
 }
 const adDenetle = (ad: string, enCok: number, ne: string): string | null => (ad.length < 2 || ad.length > enCok ? `${ne} 2–${enCok} karakter olmalı.` : null)
 
-export async function urunEkle(slug: string, isletme: string, u: { ad: string; kategoriId: string; fiyat: number; sira: number }): Promise<Sonuc> {
+export async function urunEkle(slug: string, isletme: string, u: { ad: string; kategoriId: string; fiyat: number; sira: number }): Promise<Sonuc & { id?: string }> {
   const ad = duz(u.ad)
   const h = adDenetle(ad, 60, 'Ürün adı')
   if (h) return { tamam: false, hata: h }
-  const { error } = await sunucu.from('products').insert({ restaurant_id: isletme, category_id: u.kategoriId, name: ad, names: await cevir(ad), price: u.fiyat / 100, sort: u.sira })
-  return bitir(slug, isletme, error)
+  const { data, error } = await sunucu.from('products').insert({ restaurant_id: isletme, category_id: u.kategoriId, name: ad, names: await cevir(ad), price: u.fiyat / 100, sort: u.sira }).select('id').single()
+  const s = await bitir(slug, isletme, error)
+  return s.tamam ? { tamam: true, id: (data as { id?: string } | null)?.id } : s
 }
 
 /** Yalnızca değişen alanlar gönderilir; çeviri yalnızca ad değiştiyse istenir. */

@@ -4,6 +4,7 @@ import { menuYukle, useMenu } from '../../lib/menu'
 import { isletmeSec, useYonetici } from '../../lib/oturum'
 import { useSeciliIsletme } from '../../lib/secili'
 import GorunumAyari from './Gorunum'
+import MaliAyari from './Mali'
 
 /** İşletme bilgisi ve NearMenu bağlantısı: ürünler, fiyatlar, fotoğraflar, ad ve logo NearMenu'deki kayıttan gelir. */
 export default function Isletme() {
@@ -50,6 +51,7 @@ export default function Isletme() {
         )}
       </div>
     </section>
+    <MaliAyari />
     <GorunumAyari />
     </>
   )

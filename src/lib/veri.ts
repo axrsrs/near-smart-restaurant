@@ -13,7 +13,11 @@ export type CihazKaydi = { id: string; ekran: CihazEkrani; ad: string; son_gorul
 export type SiparisTuru = 'burada' | 'paket'
 export type Odeme = 'nakit' | 'kart'
 export type SiparisDurumu = 'hazirlaniyor' | 'hazir' | 'teslim' | 'iptal'
-export type Kalem = { urunId: string; ad: string; fiyat: number; adet: number; not: string }
+export type Kalem = { urunId: string; ad: string; fiyat: number; adet: number; not: string; kdv: number | null }
+export type KdvOrani = 1 | 10 | 20
+export const KDV_ORANLARI: KdvOrani[] = [1, 10, 20]
+/** Mali fiş durumu. null: sipariş takip dışında (takip kapalıyken ya da özellikten önce alınmış). */
+export type MaliDurum = { durum: 'bekliyor' | 'kesildi'; fisNo: string; zaman: number | null; kisi: string } | null
 export type Siparis = {
   id: string
   kod: string // müşteri takip adresi için tahmin edilemez kod
@@ -25,6 +29,8 @@ export type Siparis = {
   odeme: Odeme
   personelAd: string
   durum: SiparisDurumu
+  gun: string
+  mali: MaliDurum
 }
 
 type HamSiparis = {
@@ -33,23 +39,27 @@ type HamSiparis = {
   zaman: string
   tur: SiparisTuru
   durum: SiparisDurumu
-  kalemler: { urun_id: string; ad: string; fiyat: number; adet: number; not: string }[]
+  gun?: string
+  kalemler: { urun_id: string; ad: string; fiyat: number; adet: number; not: string; kdv?: number }[]
   personel_ad: string
   odeme?: Odeme
   toplam?: number
   takip_kod?: string
+  mali?: { durum: 'bekliyor' | 'kesildi'; fis_no: string | null; zaman: string | null; kisi: string | null } | null
 }
 const cevir = (h: HamSiparis): Siparis => ({
   id: h.id,
   kod: h.takip_kod ?? '',
   no: h.no,
   zaman: Date.parse(h.zaman),
-  kalemler: (h.kalemler ?? []).map((k) => ({ urunId: k.urun_id, ad: k.ad, fiyat: k.fiyat, adet: k.adet, not: k.not ?? '' })),
+  kalemler: (h.kalemler ?? []).map((k) => ({ urunId: k.urun_id, ad: k.ad, fiyat: k.fiyat, adet: k.adet, not: k.not ?? '', kdv: typeof k.kdv === 'number' ? k.kdv : null })),
   toplam: h.toplam ?? 0,
   tur: h.tur,
   odeme: h.odeme ?? 'nakit',
   personelAd: h.personel_ad ?? '',
   durum: h.durum,
+  gun: h.gun ?? '',
+  mali: h.mali ? { durum: h.mali.durum, fisNo: h.mali.fis_no ?? '', zaman: h.mali.zaman ? Date.parse(h.mali.zaman) : null, kisi: h.mali.kisi ?? '' } : null,
 })
 
 type Yanit = { tamam: boolean; hata?: string }
@@ -124,6 +134,19 @@ export async function siparisDurumu(id: string, durum: SiparisDurumu): Promise<S
   }
 }
 
+/** Mali fiş işareti (kasadan): yazarkasa fişi kesildi / geri al. Fiş numarası isteğe bağlıdır. */
+export async function maliIsaretle(id: string, kesildi: boolean, fisNo = ''): Promise<Sonuc> {
+  try {
+    const y = await cihazCagir<Yanit & { siparis?: HamSiparis }>('tetra_mali_isaretle', { p_id: id, p_kesildi: kesildi, p_fis_no: fisNo.trim() || null })
+    if (!y.tamam || !y.siparis) return { tamam: false, hata: y.hata ?? 'İşlem tamamlanamadı.' }
+    const yeni = cevir(y.siparis)
+    ayarla(siparisler.map((x) => (x.id === id ? yeni : x)))
+    return { tamam: true }
+  } catch (e) {
+    return { tamam: false, hata: hataMetni(e) }
+  }
+}
+
 /** Kasadan tükendi işareti: ürünün NearMenu'deki kaydı güncellenir, QR menüde de aynı anda görünür. */
 export async function tukendiAyarla(slug: string, urunId: string, tukendi: boolean): Promise<Sonuc> {
   const s = await dene(() => cihazCagir<Yanit>('tetra_tukendi', { p_urun: urunId, p_tukendi: tukendi }))
@@ -144,8 +167,26 @@ export const takipOku = (kod: string) => cagir<Takip | null>('tetra_takip', { p_
 
 /* ───────── rapor (işletme sahibi) ───────── */
 export type RaporGunu = { gun: string; siparis: number; iptal: number; ciro: number; nakit: number; kart: number; burada: number; paket: number }
-export type Rapor = { ozet: Omit<RaporGunu, 'gun'>; gunler: RaporGunu[]; urunler: { ad: string; adet: number; ciro: number }[] }
+export type KdvSatiri = { oran: number; tutar: number; kdv: number } // tutar KDV dahil, kuruş
+export type Rapor = {
+  ozet: Omit<RaporGunu, 'gun'>
+  gunler: RaporGunu[]
+  urunler: { ad: string; adet: number; ciro: number }[]
+  kdv?: KdvSatiri[]
+  mali?: { bekleyen: number; bekleyen_tutar: number }
+}
 export const raporOku = (isletme: string, bas: string, bit: string) => cagir<Rapor>('tetra_rapor', { p_restaurant: isletme, p_bas: bas, p_bit: bit })
+
+/* ───────── mali ayarlar, ürün KDV oranları, fişi kesilmemiş siparişler (işletme sahibi) ───────── */
+export type MaliAyar = { kdv_varsayilan: KdvOrani; mali_takip: boolean; urunler: Record<string, KdvOrani> }
+export const maliAyarOku = (isletme: string) => cagir<MaliAyar>('tetra_mali_ayar_oku', { p_restaurant: isletme })
+export const maliAyarKaydet = (isletme: string, kdv: KdvOrani, takip: boolean) =>
+  dene(() => cagir<Yanit>('tetra_mali_ayar_kaydet', { p_restaurant: isletme, p_kdv_varsayilan: kdv, p_mali_takip: takip }))
+/** oran null: ürün işletmenin varsayılan oranını kullanır */
+export const kdvKaydet = (isletme: string, urun: string, oran: KdvOrani | null) => dene(() => cagir<Yanit>('tetra_kdv_kaydet', { p_restaurant: isletme, p_urun: urun, p_oran: oran }))
+export const maliBekleyenler = async (isletme: string) => (await cagir<HamSiparis[]>('tetra_mali_bekleyen', { p_restaurant: isletme })).map(cevir)
+export const maliIsaretleSahip = (isletme: string, id: string, kesildi: boolean, fisNo = '') =>
+  dene(() => cagir<Yanit>('tetra_mali_isaretle_sahip', { p_restaurant: isletme, p_id: id, p_kesildi: kesildi, p_fis_no: fisNo.trim() || null }))
 
 /* ───────── cihaza özel ayar ───────── */
 const A_FIS = 'tetra-otomatik-fis'

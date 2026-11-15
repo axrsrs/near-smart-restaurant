@@ -3,6 +3,7 @@ import Anahtar from '../components/Anahtar'
 import { ALAN, BTN_ANA, BTN_IKINCIL, IKON_BTN } from '../components/bicim'
 import Fis from '../components/Fis'
 import Ikon from '../components/Ikon'
+import MaliFis from '../components/MaliFis'
 import Pencere from '../components/Pencere'
 import QrKod from '../components/QrKod'
 import TemaDugmesi from '../components/TemaDugmesi'
@@ -13,6 +14,7 @@ import { menuYukle, useMenu, type MenuUrun } from '../lib/menu'
 import { kilitle, type Isletme } from '../lib/oturum'
 import { tl } from '../lib/para'
 import {
+  maliIsaretle,
   otomatikFisAyarla,
   siparisDurumu,
   siparisleriYukle,
@@ -166,6 +168,8 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
       tamamla={() => { setUyari(''); setAcik({ t: 'odeme', istek: istekKimligi() }) }}
     />
   )
+  // sipariş alındı penceresi: mali fiş işareti değişince güncel kayıt gösterilir
+  const tamamSiparis = acik?.t === 'tamam' ? (siparisler.find((x) => x.id === acik.siparis.id) ?? acik.siparis) : null
   const notSatiri = acik?.t === 'not' ? satirlar.find((s) => s.anahtar === acik.anahtar) : undefined
 
   return (
@@ -332,6 +336,11 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
             <QrKod metin={takipAdresi(acik.siparis.kod)} className="block size-full" />
           </div>
           <p className="mx-auto mt-3 max-w-xs text-center text-[13px] text-muted">Müşteri bu QR'ı okutunca siparişinin durumunu kendi telefonundan izler.</p>
+          {tamamSiparis?.mali && (
+            <div className="mt-4">
+              <MaliFis mali={tamamSiparis.mali} numarali kimlik={tamamSiparis.id} isaretle={(k, n) => maliIsaretle(tamamSiparis.id, k, n)} />
+            </div>
+          )}
           <div className="mt-4 flex items-center gap-3 rounded-[10px] border border-line px-3.5 py-1">
             <span className="min-w-0 flex-1 text-sm font-semibold">Fişi otomatik yazdır</span>
             <Anahtar acik={otomatikFis} degistir={otomatikFisAyarla} etiket="Fişi otomatik yazdır" />
@@ -464,6 +473,7 @@ function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdi
   const [iptalSor, setIptalSor] = useState<string | null>(null)
   const [hata, setHata] = useState('')
   const gecerli = liste.filter((s) => s.durum !== 'iptal')
+  const bekleyen = gecerli.filter((s) => s.mali?.durum === 'bekliyor').length
   const tutar = (o: Odeme) => gecerli.filter((s) => s.odeme === o).reduce((t, s) => t + s.toplam, 0)
 
   return (
@@ -476,6 +486,7 @@ function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdi
           </div>
         ))}
       </div>
+      {bekleyen > 0 && <p className="mt-2 rounded-xl border border-warn/50 bg-ink px-3 py-2 text-[13px] text-warn"><b className="font-semibold">{bekleyen} siparişin</b> mali fişi bekliyor. Yazarkasadan kesip işaretle.</p>}
       <p role="alert" aria-live="polite" className="mt-2 min-h-5 text-[13px] text-danger">{hata}</p>
       {!liste.length && <p className="mt-4 mb-2 text-center text-sm text-muted">Bugün henüz sipariş alınmadı.</p>}
       <ul className="mt-3 flex flex-col gap-2">
@@ -507,9 +518,17 @@ function SiparislerPenceresi({ liste, yazdir, kapat }: { liste: Siparis[]; yazdi
               )}
             </div>
             <p className="mt-1.5 truncate pl-15 text-xs text-muted">{s.kalemler.map((k) => `${k.adet}× ${k.ad}`).join(', ')}</p>
+            {s.durum !== 'iptal' && s.mali && (
+              <div className="mt-1 pl-15">
+                <MaliFis mali={s.mali} kimlik={s.id} isaretle={(k, n) => maliIsaretle(s.id, k, n)} />
+              </div>
+            )}
             {iptalSor === s.id && (
               <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
-                <span className="min-w-0 flex-1 text-[13px]">{s.no} numaralı sipariş iptal edilsin mi?</span>
+                <span className="min-w-0 flex-1 text-[13px]">
+                  {s.no} numaralı sipariş iptal edilsin mi?
+                  {s.mali?.durum === 'kesildi' && <b className="mt-0.5 block font-semibold text-warn">Mali fişi kesildi: yazarkasadan iptal ya da iade fişi kesmeyi unutma.</b>}
+                </span>
                 <button type="button" onClick={() => setIptalSor(null)} className={`${BTN_IKINCIL} h-11`}>Vazgeç</button>
                 <button type="button" onClick={async () => { setIptalSor(null); const y = await siparisDurumu(s.id, 'iptal'); setHata(y.tamam ? '' : y.hata) }} className="inline-flex h-11 items-center rounded-[10px] bg-danger px-4 text-[15px] font-semibold text-on-danger">İptal et</button>
               </div>

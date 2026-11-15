@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import Anahtar from '../../components/Anahtar'
 import { ALAN, BTN_ANA, BTN_IKINCIL, ETIKET, IKON_BTN } from '../../components/bicim'
 import Ikon from '../../components/Ikon'
@@ -8,6 +8,7 @@ import { useMenu, type MenuKategori, type MenuUrun } from '../../lib/menu'
 import { kategoriAdDegistir, kategoriEkle, urunEkle, urunGuncelle, urunSil, urunTukendi } from '../../lib/menuDuzenle'
 import { fiyatCoz, fiyatYazi, tl } from '../../lib/para'
 import { useSeciliIsletme } from '../../lib/secili'
+import { KDV_ORANLARI, kdvKaydet, maliAyarOku, type KdvOrani, type MaliAyar } from '../../lib/veri'
 
 const YENI = '__yeni__'
 const kucuk = (s: string) => s.toLocaleLowerCase('tr')
@@ -24,6 +25,15 @@ export default function Menu() {
   const [katForm, setKatForm] = useState<MenuKategori | null>(null)
   const [islemHata, setIslemHata] = useState('')
   const [mesgul, setMesgul] = useState<string | null>(null)
+  const [kdv, setKdv] = useState<MaliAyar | null>(null) // ürün KDV oranları (Tetra'da tutulur, NearMenu'ye yazılmaz)
+
+  useEffect(() => {
+    let iptal = false
+    maliAyarOku(isletme.id).then((a) => !iptal && setKdv(a), () => {})
+    return () => {
+      iptal = true
+    }
+  }, [isletme.id])
 
   const kategoriler = useMemo(() => menu?.kategoriler ?? [], [menu])
   const aktif = kategori === 'tum' || kategoriler.some((k) => k.id === kategori) ? kategori : 'tum'
@@ -89,6 +99,7 @@ export default function Menu() {
                   <p className={`truncate text-base font-semibold ${u.tukendi ? 'text-muted line-through' : ''}`}>{u.ad}</p>
                   <p className="text-sm text-muted tabular-nums">
                     {tl(u.fiyat)}
+                    {kdv?.urunler[u.id] && <span className="ml-2 rounded-full border border-line px-1.5 text-xs">KDV %{kdv.urunler[u.id]}</span>}
                     {u.tukendi && <span className="ml-2 font-semibold text-warn">Tükendi</span>}
                   </p>
                 </div>
@@ -115,7 +126,18 @@ export default function Menu() {
         </section>
       ))}
 
-      {form && <UrunFormu slug={isletme.slug} isletme={isletme.id} secili={form.secili} kategoriler={kategoriler} varsayilan={aktif === 'tum' ? '' : aktif} kapat={() => setForm(null)} />}
+      {form && (
+        <UrunFormu
+          slug={isletme.slug}
+          isletme={isletme.id}
+          secili={form.secili}
+          kategoriler={kategoriler}
+          varsayilan={aktif === 'tum' ? '' : aktif}
+          kdv={kdv}
+          kdvDegisti={(id, oran) => setKdv((a) => { if (!a) return a; const urunler = { ...a.urunler }; if (oran) urunler[id] = oran; else delete urunler[id]; return { ...a, urunler } })}
+          kapat={() => setForm(null)}
+        />
+      )}
       {katForm && <KategoriFormu slug={isletme.slug} isletme={isletme.id} kategori={katForm} kapat={() => setKatForm(null)} />}
       {silinecek && (
         <Onay
@@ -135,7 +157,19 @@ export default function Menu() {
   )
 }
 
-function UrunFormu({ slug, isletme, secili, kategoriler, varsayilan, kapat }: { slug: string; isletme: string; secili?: Secili; kategoriler: MenuKategori[]; varsayilan: string; kapat: () => void }) {
+function UrunFormu(p: {
+  slug: string
+  isletme: string
+  secili?: Secili
+  kategoriler: MenuKategori[]
+  varsayilan: string
+  kdv: MaliAyar | null
+  kdvDegisti: (urunId: string, oran: KdvOrani | null) => void
+  kapat: () => void
+}) {
+  const { slug, isletme, secili, kategoriler, varsayilan, kapat } = p
+  const ilkOran = secili ? (p.kdv?.urunler[secili.urun.id] ?? null) : null
+  const [oran, setOran] = useState<KdvOrani | null>(ilkOran)
   const [ad, setAd] = useState(secili?.urun.ad ?? '')
   const [kategoriId, setKategoriId] = useState(secili?.kategoriId ?? (varsayilan || kategoriler[0]?.id || YENI))
   const [yeniKategori, setYeniKategori] = useState('')
@@ -167,9 +201,22 @@ function UrunFormu({ slug, isletme, secili, kategoriler, varsayilan, kapat }: { 
     const s = secili
       ? await urunGuncelle(slug, isletme, secili.urun.id, { ad: secili.urun.ad, fiyat: secili.urun.fiyat, kategoriId: secili.kategoriId }, { ad, fiyat: kurus, kategoriId: kId })
       : await urunEkle(slug, isletme, { ad, kategoriId: kId, fiyat: kurus, sira: kategoriler.find((k) => k.id === kId)?.urunler.length ?? 0 })
+    if (!s.tamam) {
+      setBekle(false)
+      return setHata(s.hata)
+    }
+    // KDV oranı Tetra'da ayrı tutulur; yalnızca değiştiyse yazılır
+    const urunId = secili ? secili.urun.id : (s as { id?: string }).id
+    if (urunId && oran !== ilkOran) {
+      const k = await kdvKaydet(isletme, urunId, oran)
+      if (!k.tamam) {
+        setBekle(false)
+        return setHata(`Ürün kaydedildi ama KDV oranı kaydedilemedi: ${k.hata}`)
+      }
+      p.kdvDegisti(urunId, oran)
+    }
     setBekle(false)
-    if (s.tamam) kapat()
-    else setHata(s.hata)
+    kapat()
   }
 
   return (
@@ -193,7 +240,20 @@ function UrunFormu({ slug, isletme, secili, kategoriler, varsayilan, kapat }: { 
         <div>
           <label htmlFor="urun-fiyat" className={ETIKET}>Fiyat (₺)</label>
           <input id="urun-fiyat" value={fiyat} onChange={(e) => setFiyat(e.target.value)} inputMode="decimal" maxLength={12} autoComplete="off" placeholder="0,00" className={`${ALAN} tabular-nums`} />
+          <p className="mt-1.5 text-xs text-muted">KDV dahil satış fiyatı.</p>
         </div>
+        {p.kdv && (
+          <div>
+            <label htmlFor="urun-kdv" className={ETIKET}>KDV oranı</label>
+            <select id="urun-kdv" value={oran ?? ''} onChange={(e) => setOran(e.target.value ? (Number(e.target.value) as KdvOrani) : null)} className={ALAN}>
+              <option value="">Varsayılan (%{p.kdv.kdv_varsayilan})</option>
+              {KDV_ORANLARI.map((o) => (
+                <option key={o} value={o}>%{o}</option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-muted">Alkollü içecekler için %20 seç. Yalnızca Tetra raporunda kullanılır; QR menüde görünmez.</p>
+          </div>
+        )}
         <p role="alert" aria-live="polite" className="min-h-5 text-[13px] text-danger">{hata}</p>
         <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
           <button type="button" onClick={kapat} className={BTN_IKINCIL}>Vazgeç</button>

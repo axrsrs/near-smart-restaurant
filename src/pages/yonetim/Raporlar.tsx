@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ALAN, ETIKET } from '../../components/bicim'
+import MaliFis from '../../components/MaliFis'
+import { ODEME_ADI } from '../../lib/etiketler'
 import { tl } from '../../lib/para'
 import { useSeciliIsletme } from '../../lib/secili'
 import { hataMetni } from '../../lib/sunucu'
-import { raporOku, type Rapor } from '../../lib/veri'
+import { maliBekleyenler, maliIsaretleSahip, raporOku, type Rapor, type Siparis } from '../../lib/veri'
 
 const iso = (t: Date) => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
 const gunOnce = (n: number) => {
@@ -29,6 +31,7 @@ export default function Raporlar() {
   const [rapor, setRapor] = useState<Rapor | null>(null)
   const [hata, setHata] = useState('')
   const [yuklenen, setYuklenen] = useState('')
+  const [tazele, setTazele] = useState(0) // mali fiş işaretlenince rapor yeniden okunur
   const anahtar = `${isletme.id}|${bas}|${bit}`
   const bekle = yuklenen !== anahtar // seçilen aralığın raporu henüz gelmedi
 
@@ -46,7 +49,7 @@ export default function Raporlar() {
     return () => {
       iptal = true
     }
-  }, [isletme.id, bas, bit])
+  }, [isletme.id, bas, bit, tazele])
 
   const o = rapor?.ozet
   const ortalama = o && o.siparis ? Math.round(o.ciro / o.siparis) : 0
@@ -59,12 +62,15 @@ export default function Raporlar() {
         ['Kart', tl(o.kart)],
         ['Burada / Paket', `${o.burada} / ${o.paket}`],
         ['İptal', String(o.iptal)],
+        ...(rapor?.mali ? [['Mali fiş bekleyen', rapor.mali.bekleyen ? `${rapor.mali.bekleyen} · ${tl(rapor.mali.bekleyen_tutar)}` : 'Yok'] as [string, string]] : []),
       ]
     : []
   const enCok = Math.max(1, ...(rapor?.urunler.map((u) => u.ciro) ?? [1]))
 
+  const kdv = rapor?.kdv ?? []
   return (
     <>
+      <MaliBekleyenler isletme={isletme.id} degisti={() => setTazele((n) => n + 1)} />
       <div className="-mx-4 overflow-x-auto px-4" role="group" aria-label="Tarih aralığı">
         <div className="flex w-max gap-2 pb-1">
           {[...HAZIR.map((h) => h.ad), 'Özel'].map((ad) => (
@@ -119,6 +125,23 @@ export default function Raporlar() {
             <p className="mt-8 text-center text-sm text-muted">Bu tarih aralığında sipariş yok.</p>
           ) : (
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              {kdv.length > 0 && (
+                <section className="lg:col-span-2">
+                  <h2 className="mb-2.5 text-[13px] font-semibold tracking-wider text-muted uppercase">KDV kırılımı</h2>
+                  <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {kdv.map((k) => (
+                      <li key={k.oran} className="rounded-xl border border-line bg-ink-2 p-3">
+                        <div className="flex items-baseline gap-3">
+                          <span className="min-w-0 flex-1 text-[15px] font-semibold">KDV %{k.oran}</span>
+                          <span className="flex-none text-[15px] font-semibold tabular-nums">{tl(k.tutar)}</span>
+                        </div>
+                        <p className="mt-0.5 text-[13px] text-muted tabular-nums">Matrah {tl(k.tutar - k.kdv)} · KDV {tl(k.kdv)}</p>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-muted">Bilgi amaçlıdır; satış fiyatları KDV dahil kabul edilerek hesaplanır. Resmî kayıt yazarkasa Z raporu ve e-Arşiv faturalardır.</p>
+                </section>
+              )}
               <section>
                 <h2 className="mb-2.5 text-[13px] font-semibold tracking-wider text-muted uppercase">En çok satanlar</h2>
                 <ol className="flex flex-col gap-2">
@@ -158,5 +181,65 @@ export default function Raporlar() {
         </div>
       )}
     </>
+  )
+}
+
+const gunSaat = (s: Siparis) =>
+  `${new Date(`${s.gun}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })} ${new Date(s.zaman).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
+
+/** Fişi kesilmemiş siparişler (son 90 gün). Sahip buradan da işaretleyebilir; liste boşsa hiç görünmez. */
+function MaliBekleyenler({ isletme, degisti }: { isletme: string; degisti: () => void }) {
+  const [liste, setListe] = useState<Siparis[] | null>(null)
+  const [acik, setAcik] = useState(false)
+  const [hata, setHata] = useState('')
+  const yukle = useCallback(() => {
+    maliBekleyenler(isletme).then(
+      (l) => { setListe(l); setHata('') },
+      (e) => setHata(hataMetni(e)),
+    )
+  }, [isletme])
+  useEffect(() => {
+    yukle()
+  }, [yukle])
+
+  if (hata) return <p role="alert" className="mb-3 text-[13px] text-danger">{hata}</p>
+  if (!liste?.length) return null
+  const tutar = liste.reduce((t, s) => t + s.toplam, 0)
+  return (
+    <section aria-labelledby="mali-bekleyen-baslik" className="mb-5 rounded-2xl border border-warn/50 bg-ink-2 p-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 id="mali-bekleyen-baslik" className="min-w-0 flex-1 text-[15px] font-semibold text-warn">
+          Mali fişi kesilmemiş {liste.length >= 300 ? '300+' : liste.length} sipariş · {tl(tutar)}
+        </h2>
+        <button type="button" aria-expanded={acik} onClick={() => setAcik((v) => !v)} className="-my-1 min-h-11 rounded-lg px-2 text-sm font-semibold underline underline-offset-2">
+          {acik ? 'Gizle' : 'Listeyi göster'}
+        </button>
+      </div>
+      <p className="mt-0.5 text-[13px] text-muted">Yazarkasadan fişi kesilen siparişleri işaretle. Kesilmemiş satış vergi cezasına yol açabilir.</p>
+      {acik && (
+        <ul className="mt-3 flex flex-col gap-2">
+          {liste.map((s) => (
+            <li key={s.id} className="rounded-xl border border-line bg-ink p-3">
+              <div className="flex items-baseline gap-3">
+                <span className="w-10 flex-none text-center text-lg font-bold tabular-nums">{s.no}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] text-muted">{gunSaat(s)} · {ODEME_ADI[s.odeme]} · {s.personelAd || 'Kasa'}</span>
+                <span className="flex-none text-[15px] font-semibold tabular-nums">{tl(s.toplam)}</span>
+              </div>
+              <div className="mt-1 pl-13">
+                <MaliFis
+                  mali={s.mali}
+                  kimlik={s.id}
+                  isaretle={async (k, n) => {
+                    const r = await maliIsaretleSahip(isletme, s.id, k, n)
+                    if (r.tamam) { setListe((l) => l?.filter((x) => x.id !== s.id) ?? l); degisti() }
+                    return r
+                  }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }

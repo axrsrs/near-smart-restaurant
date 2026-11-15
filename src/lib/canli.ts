@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { sunucu } from './sunucu'
 
-export type Konu = 'siparis' | 'menu' | 'personel' | 'durum' | 'gorunum'
+export type Konu = 'siparis' | 'menu' | 'personel' | 'durum' | 'gorunum' | 'ayar'
 
 /** Kanala abone olur; haber geldikçe geriCagri çalışır. Dönüş: canlı bağlantı kurulu mu. */
 export function useCanli(kanal: string, geriCagri: (konu: Konu) => void, onek = 'tetra'): boolean {
@@ -20,8 +20,8 @@ export function useCanli(kanal: string, geriCagri: (konu: Konu) => void, onek = 
       .channel(`${onek}:${kanal}`)
       .on('broadcast', { event: 'degisti' }, (ileti) => {
         const konu = (ileti.payload as { konu?: unknown } | undefined)?.konu
-        // görünüm değiştiyse cihaz durumunu yeniden okuyup yeni renge geçer (oturum.ts dinler)
-        if (konu === 'gorunum') window.dispatchEvent(new Event('tetra-gorunum'))
+        // görünüm ya da işletme ayarı değiştiyse cihaz durumunu yeniden okur (oturum.ts dinler)
+        if (konu === 'gorunum' || konu === 'ayar') window.dispatchEvent(new Event('tetra-gorunum'))
         if (konu === 'siparis' || konu === 'menu' || konu === 'personel' || konu === 'durum') cb.current(konu)
       })
       .subscribe((durum) => setBagli(durum === 'SUBSCRIBED'))
