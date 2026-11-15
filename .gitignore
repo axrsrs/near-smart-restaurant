@@ -25,3 +25,8 @@ dist-worker
 *.njsproj
 *.sln
 *.sw?
+
+# Agent araçları (skill kurulumları) — ürün kodu değil
+.agents/
+.claude/
+skills-lock.json
