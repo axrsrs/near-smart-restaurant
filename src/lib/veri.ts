@@ -178,7 +178,9 @@ export type Rapor = {
 export const raporOku = (isletme: string, bas: string, bit: string) => cagir<Rapor>('tetra_rapor', { p_restaurant: isletme, p_bas: bas, p_bit: bit })
 
 /* ───────── mali ayarlar, ürün KDV oranları, fişi kesilmemiş siparişler (işletme sahibi) ───────── */
-export type MaliAyar = { kdv_varsayilan: KdvOrani; mali_takip: boolean; urunler: Record<string, KdvOrani> }
+export type MaliAyar = { kdv_varsayilan: KdvOrani; mali_takip: boolean; kasa_gorunum?: string; urunler: Record<string, KdvOrani> }
+/** İşletmenin bütün kasaları için varsayılan ürün görünümü (her kasa kendi cihazında değiştirebilir). */
+export const kasaGorunumKaydet = (isletme: string, gorunum: string) => dene(() => cagir<Yanit>('tetra_kasa_gorunum_kaydet', { p_restaurant: isletme, p_gorunum: gorunum }))
 export const maliAyarOku = (isletme: string) => cagir<MaliAyar>('tetra_mali_ayar_oku', { p_restaurant: isletme })
 export const maliAyarKaydet = (isletme: string, kdv: KdvOrani, takip: boolean) =>
   dene(() => cagir<Yanit>('tetra_mali_ayar_kaydet', { p_restaurant: isletme, p_kdv_varsayilan: kdv, p_mali_takip: takip }))

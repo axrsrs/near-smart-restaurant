@@ -6,6 +6,7 @@ const YOL: Record<string, ReactNode> = {
   goz: (<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>),
   gozKapali: (<><path d="M2 10s3.5 5 10 5 10-5 10-5" /><path d="m4 13-1.5 2M20 13l1.5 2M9 15l-.8 2.4M15 15l.8 2.4" /></>),
   ok: <path d="M5 12h14M13 6l6 6-6 6" />,
+  izgara: (<><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></>),
   ileri: <path d="m9 6 6 6-6 6" />,
   geri: <path d="m15 6-6 6 6 6" />,
   gunes: (<><circle cx="12" cy="12" r="4.5" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></>),

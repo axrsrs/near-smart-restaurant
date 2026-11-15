@@ -9,6 +9,7 @@ import QrKod from '../components/QrKod'
 import TemaDugmesi from '../components/TemaDugmesi'
 import { useCanli, useTazele } from '../lib/canli'
 import { oku, yaz } from '../lib/depo'
+import { cihazGorunumuAyarla, isletmeGorunumu, KASA_GORUNUMLERI, kasaGorunumAdi, useCihazGorunumu, type KasaGorunum } from '../lib/kasaGorunum'
 import { ODEME_ADI, takipAdresi, TUR_ADI } from '../lib/etiketler'
 import { menuYukle, useMenu, type MenuUrun } from '../lib/menu'
 import { kilitle, type Isletme } from '../lib/oturum'
@@ -28,13 +29,18 @@ import {
 } from '../lib/veri'
 
 type Satir = { anahtar: string; urunId: string; ad: string; fiyat: number; adet: number; not: string }
-type Acik = null | { t: 'sepet' } | { t: 'not'; anahtar: string } | { t: 'odeme'; istek: string } | { t: 'tamam'; siparis: Siparis } | { t: 'siparisler' }
+type Acik = null | { t: 'sepet' } | { t: 'not'; anahtar: string } | { t: 'odeme'; istek: string } | { t: 'tamam'; siparis: Siparis } | { t: 'siparisler' } | { t: 'gorunum' }
 
 const HAZIR_NOTLAR = ['Soğansız', 'Acısız', 'Az pişmiş', 'İyi pişmiş', 'Sossuz', 'Buzsuz', 'Şekersiz', 'Yanında peçete']
 const A_SEPET = 'tetra-sepet'
 const istekKimligi = () => (crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => (Number(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(c) / 4)))).toString(16)))
 const kucuk = (s: string) => s.toLocaleLowerCase('tr')
 const anahtar = (urunId: string, not: string) => `${urunId}|${kucuk(not)}`
+const IZGARA: Record<KasaGorunum, string> = {
+  buyuk: 'grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4',
+  kucuk: 'grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6',
+  liste: 'grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-3',
+}
 const saat = (z: number) => new Date(z).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
 
 export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; personel: { id: string; ad: string }; kanal: string }) {
@@ -42,6 +48,9 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
   const { menu, yukleniyor, hata: menuHata } = useMenu(slug)
   const siparisler = useSiparisler()
   const otomatikFis = useOtomatikFis()
+  const cihazGorunumu = useCihazGorunumu()
+  const varsayilanGorunum = isletmeGorunumu(isletme.kasa_gorunum)
+  const gorunum: KasaGorunum = cihazGorunumu ?? varsayilanGorunum
 
   const [kategori, setKategori] = useState('tum')
   const [arama, setArama] = useState('')
@@ -215,10 +224,15 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
       <div className="flex min-h-0 flex-1">
         <main className="cam-p min-w-0 flex-1 overflow-y-auto bg-ink pb-28 lg:pb-6">
           <div className="sticky top-0 z-10 bg-ink px-3 pt-3 pb-2 sm:px-4">
-            <label className="relative flex items-center text-text/45 focus-within:text-text">
-              <Ikon ad="ara" className="pointer-events-none absolute left-3.5 size-4" />
-              <input id="kasa-ara" type="search" placeholder="Ürün ara" aria-label="Ürün ara" maxLength={60} value={arama} onChange={(e) => setArama(e.target.value)} className={`${ALAN} bg-ink-2 pl-10`} />
-            </label>
+            <div className="flex gap-2">
+              <label className="relative flex min-w-0 flex-1 items-center text-text/45 focus-within:text-text">
+                <Ikon ad="ara" className="pointer-events-none absolute left-3.5 size-4" />
+                <input id="kasa-ara" type="search" placeholder="Ürün ara" aria-label="Ürün ara" maxLength={60} value={arama} onChange={(e) => setArama(e.target.value)} className={`${ALAN} bg-ink-2 pl-10`} />
+              </label>
+              <button type="button" onClick={() => setAcik({ t: 'gorunum' })} title="Ürün görünümü" aria-label={`Ürün görünümü: ${kasaGorunumAdi(gorunum)}`} className={`${IKON_BTN} size-12`}>
+                <Ikon ad={gorunum === 'liste' ? 'liste' : 'izgara'} className="size-5" />
+              </button>
+            </div>
             <div className="-mx-3 mt-2 overflow-x-auto px-3 sm:-mx-4 sm:px-4" role="group" aria-label="Kategoriler">
               <div className="flex w-max gap-2">
                 {[{ id: 'tum', ad: 'Tümü' }, ...(menu?.kategoriler ?? []).filter((k) => k.urunler.length)].map((k) => (
@@ -259,10 +273,30 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
             {gruplar.map((g) => (
               <section key={g.id} className="mt-3 first:mt-1">
                 <h2 className="mb-2 text-[13px] font-semibold tracking-wider text-muted uppercase">{g.ad}</h2>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
+                <div className={IZGARA[gorunum]}>
                   {g.urunler.map((u) => {
                     const tukendi = u.tukendi
                     const adet = adetler.get(u.id) ?? 0
+                    if (gorunum === 'liste')
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          disabled={tukendi && !stokModu}
+                          onClick={() => void urunDokun(u)}
+                          aria-label={`${u.ad}, ${tl(u.fiyat)}${tukendi ? ', tükendi' : ''}`}
+                          className={`flex min-h-14 items-center gap-2 rounded-xl border bg-ink-2 px-3 py-2 text-left transition active:scale-[0.98] ${adet ? 'border-gold ring-2 ring-gold/40' : 'border-line'}`}
+                        >
+                          <span className={`line-clamp-2 min-w-0 flex-1 text-[15px] leading-tight font-semibold ${tukendi ? 'text-muted line-through' : ''}`}>{u.ad}</span>
+                          {tukendi ? (
+                            <span className="flex-none text-xs font-semibold text-warn">Tükendi</span>
+                          ) : (
+                            <span className="flex-none text-sm text-muted tabular-nums">{tl(u.fiyat)}</span>
+                          )}
+                          {adet > 0 && <span className="grid h-7 min-w-7 flex-none place-items-center rounded-full bg-gold px-1.5 text-sm font-bold text-on-gold tabular-nums">{adet}</span>}
+                        </button>
+                      )
+                    const kucuk = gorunum === 'kucuk'
                     return (
                       <button
                         key={u.id}
@@ -270,15 +304,15 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
                         disabled={tukendi && !stokModu}
                         onClick={() => void urunDokun(u)}
                         aria-label={`${u.ad}, ${tl(u.fiyat)}${tukendi ? ', tükendi' : ''}`}
-                        className={`relative aspect-[4/3] overflow-hidden rounded-2xl border bg-[#262523] text-left transition active:scale-[0.97] ${adet ? 'border-gold ring-2 ring-gold/40' : 'border-line'}`}
+                        className={`relative aspect-[4/3] overflow-hidden border bg-[#262523] text-left ${kucuk ? 'rounded-xl' : 'rounded-2xl'} transition active:scale-[0.97] ${adet ? 'border-gold ring-2 ring-gold/40' : 'border-line'}`}
                       >
                         {u.gorsel && <img src={u.gorsel} alt="" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.hidden = true }} className="absolute inset-0 size-full object-cover" />}
                         <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/5" />
-                        <span className="absolute inset-x-0 bottom-0 p-2.5 text-white sm:p-3">
-                          <span className="line-clamp-2 text-[15px] leading-tight font-semibold">{u.ad}</span>
-                          <span className="mt-0.5 block text-sm tabular-nums opacity-90">{tl(u.fiyat)}</span>
+                        <span className={`absolute inset-x-0 bottom-0 text-white ${kucuk ? 'p-1.5 sm:p-2' : 'p-2.5 sm:p-3'}`}>
+                          <span className={`line-clamp-2 leading-tight font-semibold ${kucuk ? 'text-[13px]' : 'text-[15px]'}`}>{u.ad}</span>
+                          <span className={`mt-0.5 block tabular-nums opacity-90 ${kucuk ? 'text-xs' : 'text-sm'}`}>{tl(u.fiyat)}</span>
                         </span>
-                        {adet > 0 && <span className="absolute top-2 right-2 grid h-7 min-w-7 place-items-center rounded-full bg-gold px-1.5 text-sm font-bold text-on-gold tabular-nums">{adet}</span>}
+                        {adet > 0 && <span className={`absolute grid place-items-center rounded-full bg-gold font-bold text-on-gold tabular-nums ${kucuk ? 'top-1 right-1 h-6 min-w-6 px-1 text-xs' : 'top-2 right-2 h-7 min-w-7 px-1.5 text-sm'}`}>{adet}</span>}
                         {tukendi && (
                           <span className="absolute inset-0 grid place-items-center bg-black/65 text-center text-sm font-semibold text-white">
                             Tükendi
@@ -351,6 +385,33 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
               Fiş yazdır
             </button>
             <button type="button" data-ilk onClick={() => setAcik(null)} className={BTN_ANA}>Yeni sipariş</button>
+          </div>
+        </Pencere>
+      )}
+      {acik?.t === 'gorunum' && (
+        <Pencere baslik="Ürün görünümü" kapat={() => setAcik(null)}>
+          <p className="text-sm text-muted">Yalnızca bu cihazı değiştirir. İşletmenin bütün kasaları için varsayılanı Yönetim › İşletme'den sahip belirler.</p>
+          <div role="radiogroup" aria-label="Ürün görünümü" className="mt-3 flex flex-col gap-2">
+            {[{ kod: null, ad: `İşletme varsayılanı (${kasaGorunumAdi(varsayilanGorunum)})`, not: 'Sahip değiştirirse bu kasa da değişir' }, ...KASA_GORUNUMLERI].map((x) => {
+              const secili = cihazGorunumu === x.kod
+              return (
+                <button
+                  key={x.kod ?? 'varsayilan'}
+                  type="button"
+                  role="radio"
+                  aria-checked={secili}
+                  data-ilk={secili || undefined}
+                  onClick={() => { cihazGorunumuAyarla(x.kod); setAcik(null) }}
+                  className={`flex min-h-14 items-center gap-3 rounded-xl border px-4 py-2.5 text-left transition ${secili ? 'border-gold bg-soft' : 'border-line bg-ink hover:border-text/40'}`}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold">{x.ad}</span>
+                    <span className="block text-[13px] text-muted">{x.not}</span>
+                  </span>
+                  {secili && <Ikon ad="tik" className="size-5 flex-none text-gold" />}
+                </button>
+              )
+            })}
           </div>
         </Pencere>
       )}
