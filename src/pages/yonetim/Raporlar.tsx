@@ -72,6 +72,7 @@ export default function Raporlar() {
         ['Kart', tl(o.kart)],
         ['Burada / Paket', `${o.burada} / ${o.paket}`],
         ['İptal', String(o.iptal)],
+        ...(o.indirim ? [['İndirim ve ikram', tl(o.indirim)] as [string, string]] : []),
         ...(rapor?.mali ? [['Mali fiş bekleyen', rapor.mali.bekleyen ? `${rapor.mali.bekleyen} · ${tl(rapor.mali.bekleyen_tutar)}` : 'Yok'] as [string, string]] : []),
       ]
     : []

@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
 import { ODEME_ADI, takipAdresi, TUR_ADI } from '../lib/etiketler'
 import { tl } from '../lib/para'
-import type { Siparis } from '../lib/veri'
+import { INDIRIM_ADI, type Siparis } from '../lib/veri'
 import QrKod from './QrKod'
 
 
@@ -27,14 +27,32 @@ export default function Fis({ siparis, isletmeAd }: { siparis: Siparis; isletmeA
         </div>
       ))}
       <hr />
+      {siparis.indirim && (
+        <>
+          <div className="fis-satir">
+            <span>Ara toplam</span>
+            <span>{tl(siparis.indirim.brut)}</span>
+          </div>
+          <div className="fis-satir">
+            <span>
+              {INDIRIM_ADI[siparis.indirim.tur]}
+              {siparis.indirim.tur === 'yuzde' || (siparis.indirim.tur === 'personel' && (siparis.indirim.deger ?? 100) < 100) ? ` %${siparis.indirim.deger}` : ''}
+              {siparis.indirim.aciklama && <em>{siparis.indirim.aciklama}</em>}
+            </span>
+            <span>−{tl(siparis.indirim.tutar)}</span>
+          </div>
+        </>
+      )}
       <div className="fis-satir fis-kalin fis-buyuk">
         <span>TOPLAM</span>
         <span>{tl(siparis.toplam)}</span>
       </div>
-      <div className="fis-satir">
-        <span>Ödeme</span>
-        <span>{ODEME_ADI[siparis.odeme]}</span>
-      </div>
+      {siparis.toplam > 0 && (
+        <div className="fis-satir">
+          <span>Ödeme</span>
+          <span>{ODEME_ADI[siparis.odeme]}</span>
+        </div>
+      )}
       {siparis.personelAd && (
         <div className="fis-satir">
           <span>Kasiyer</span>

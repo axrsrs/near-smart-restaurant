@@ -8,7 +8,7 @@ import { cagir, hataMetni } from './sunucu'
 
 export type { Sonuc }
 export type Yetki = 'kasa' | 'mutfak'
-export type PersonelKaydi = { id: string; ad: string; yetkiler: Yetki[]; aktif: boolean }
+export type PersonelKaydi = { id: string; ad: string; yetkiler: Yetki[]; aktif: boolean; indirim?: boolean }
 export type CihazKaydi = { id: string; ekran: CihazEkrani; ad: string; son_gorulme: string | null; created_at: string; personel: string | null }
 export type SiparisTuru = 'burada' | 'paket'
 export type Odeme = 'nakit' | 'kart'
@@ -31,6 +31,21 @@ export type Siparis = {
   durum: SiparisDurumu
   gun: string
   mali: MaliDurum
+  indirim: Indirim | null
+  ikram: boolean // ikram ya da personel yemeği
+}
+export type IndirimTuru = 'yuzde' | 'tutar' | 'ikram' | 'personel'
+export type Indirim = { tur: IndirimTuru; deger: number | null; tutar: number; brut: number; aciklama: string; kisi: string }
+/** Kasadan gönderilen indirim isteği. deger: yüzde (1–100) ya da kuruş. */
+export type IndirimIstegi = { tur: IndirimTuru; deger: number | null; aciklama: string }
+export const INDIRIM_ADI: Record<IndirimTuru, string> = { yuzde: 'İndirim', tutar: 'İndirim', ikram: 'İkram', personel: 'Personel yemeği' }
+/** Sunucudaki hesabın aynısı: indirim tutarı (kuruş). Geçersizse null. */
+export function indirimTutari(brut: number, i: IndirimIstegi): number | null {
+  const d = i.deger
+  if (i.tur === 'ikram') return brut
+  if (i.tur === 'tutar') return d !== null && d >= 1 && d <= brut ? d : null
+  const y = i.tur === 'personel' ? (d ?? 100) : d
+  return y !== null && y >= 1 && y <= 100 ? Math.round((brut * y) / 100) : null
 }
 
 type HamSiparis = {
@@ -46,6 +61,8 @@ type HamSiparis = {
   toplam?: number
   takip_kod?: string
   mali?: { durum: 'bekliyor' | 'kesildi'; fis_no: string | null; zaman: string | null; kisi: string | null } | null
+  indirim?: Indirim | null
+  ikram?: boolean
 }
 const cevir = (h: HamSiparis): Siparis => ({
   id: h.id,
@@ -59,6 +76,8 @@ const cevir = (h: HamSiparis): Siparis => ({
   personelAd: h.personel_ad ?? '',
   durum: h.durum,
   gun: h.gun ?? '',
+  indirim: h.indirim ?? null,
+  ikram: Boolean(h.ikram),
   mali: h.mali ? { durum: h.mali.durum, fisNo: h.mali.fis_no ?? '', zaman: h.mali.zaman ? Date.parse(h.mali.zaman) : null, kisi: h.mali.kisi ?? '' } : null,
 })
 
@@ -75,8 +94,8 @@ async function dene(is: () => Promise<Yanit>): Promise<Sonuc> {
 /* ───────── yönetim: personel ve cihazlar (işletme sahibi oturumuyla) ───────── */
 export const personelListesi = (isletme: string) => cagir<PersonelKaydi[]>('tetra_personel_liste', { p_restaurant: isletme })
 
-export const personelKaydet = (isletme: string, p: { id?: string; ad: string; yetkiler: Yetki[]; pin: string; aktif: boolean }) =>
-  dene(() => cagir<Yanit>('tetra_personel_kaydet', { p_restaurant: isletme, p_id: p.id ?? null, p_ad: p.ad, p_yetkiler: p.yetkiler, p_pin: p.pin, p_aktif: p.aktif }))
+export const personelKaydet = (isletme: string, p: { id?: string; ad: string; yetkiler: Yetki[]; pin: string; aktif: boolean; indirim?: boolean }) =>
+  dene(() => cagir<Yanit>('tetra_personel_kaydet', { p_restaurant: isletme, p_id: p.id ?? null, p_ad: p.ad, p_yetkiler: p.yetkiler, p_pin: p.pin, p_aktif: p.aktif, p_indirim: p.indirim ?? null }))
 
 export const personelSil = (isletme: string, id: string) => dene(() => cagir<Yanit>('tetra_personel_sil', { p_restaurant: isletme, p_id: id }))
 
@@ -109,13 +128,14 @@ export async function siparisleriYukle(): Promise<Sonuc & { liste?: Siparis[] }>
 }
 
 /** Siparişi sunucuya yazar. Fiyat gönderilmez: tutarı sunucu menüden hesaplar. Aynı istek kimliği yinelenirse tek sipariş oluşur. */
-export async function siparisOlustur(s: { kalemler: { urunId: string; adet: number; not: string }[]; tur: SiparisTuru; odeme: Odeme; istek: string }): Promise<Sonuc & { siparis?: Siparis }> {
+export async function siparisOlustur(s: { kalemler: { urunId: string; adet: number; not: string }[]; tur: SiparisTuru; odeme: Odeme; istek: string; indirim?: IndirimIstegi | null }): Promise<Sonuc & { siparis?: Siparis }> {
   try {
     const y = await cihazCagir<Yanit & { siparis?: HamSiparis }>('tetra_siparis_olustur', {
       p_kalemler: s.kalemler.map((k) => ({ urun_id: k.urunId, adet: k.adet, not: k.not })),
       p_tur: s.tur,
       p_odeme: s.odeme,
       p_istek: s.istek,
+      p_indirim: s.indirim ? { tur: s.indirim.tur, deger: s.indirim.deger, aciklama: s.indirim.aciklama.trim() } : null,
     })
     if (!y.tamam || !y.siparis) return { tamam: false, hata: y.hata ?? 'Sipariş kaydedilemedi.' }
     const siparis = cevir(y.siparis)
@@ -174,7 +194,7 @@ export const takipOku = (kod: string) => cagir<Takip | null>('tetra_takip', { p_
 export type RaporGunu = { gun: string; siparis: number; iptal: number; ciro: number; nakit: number; kart: number; burada: number; paket: number }
 export type KdvSatiri = { oran: number; tutar: number; kdv: number } // tutar KDV dahil, kuruş
 export type Rapor = {
-  ozet: Omit<RaporGunu, 'gun'>
+  ozet: Omit<RaporGunu, 'gun'> & { indirim?: number }
   gunler: RaporGunu[]
   urunler: { ad: string; adet: number; ciro: number }[]
   kdv?: KdvSatiri[]
@@ -230,6 +250,7 @@ export type GunOzeti = {
   personel: { ad: string; siparis: number; ciro: number; nakit: number; kart: number }[]
   kdv: KdvSatiri[]
   mali: { bekleyen: number; tutar: number }
+  indirim?: { adet: number; tutar: number; liste: { no: number; tur: IndirimTuru; tutar: number; aciklama: string; kisi: string }[] }
   urunler: { ad: string; adet: number; ciro: number }[]
 }
 export type GunSonu = { id: string; gun: string; zaman: string; personel_ad: string; beklenen_nakit: number; sayilan_nakit: number | null; fark: number | null; aciklama: string; ozet: GunOzeti }

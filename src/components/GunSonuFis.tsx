@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom'
 import { tl } from '../lib/para'
-import type { GunOzeti, GunSonu } from '../lib/veri'
+import { INDIRIM_ADI, type GunOzeti, type GunSonu } from '../lib/veri'
 
 const saat = (z: string | number | null) => (z ? new Date(z).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '–')
 const farkYazi = (f: number) => (f === 0 ? 'Tam' : f > 0 ? `${tl(f)} fazla` : `${tl(-f)} eksik`)
@@ -44,6 +44,15 @@ export default function GunSonuFis({ ozet, kapanis, isletmeAd, kasiyer }: { ozet
       {ozet.iptal.liste.map((x) => (
         <S key={x.no} a={`No ${x.no}${x.kisi ? ` · ${x.kisi}` : ''}`} b={tl(x.tutar)} />
       ))}
+      {ozet.indirim && ozet.indirim.adet > 0 && (
+        <>
+          <hr />
+          <S a={`İndirim ve ikram (${ozet.indirim.adet})`} b={tl(ozet.indirim.tutar)} k />
+          {ozet.indirim.liste.map((x) => (
+            <S key={x.no} a={`No ${x.no} · ${INDIRIM_ADI[x.tur]}${x.kisi ? ` · ${x.kisi}` : ''}`} b={tl(x.tutar)} />
+          ))}
+        </>
+      )}
       {ozet.personel.length > 0 && (
         <>
           <hr />

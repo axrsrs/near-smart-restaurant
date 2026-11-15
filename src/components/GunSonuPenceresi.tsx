@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fiyatCoz, tl } from '../lib/para'
 import { hataMetni } from '../lib/sunucu'
-import { gunSonuKaydet, gunSonuOku, type GunOzeti, type GunSonu } from '../lib/veri'
+import { gunSonuKaydet, gunSonuOku, INDIRIM_ADI, type GunOzeti, type GunSonu } from '../lib/veri'
 import { ALAN, BTN_ANA, BTN_IKINCIL, ETIKET } from './bicim'
 import Ikon from './Ikon'
 import Pencere from './Pencere'
@@ -70,6 +70,12 @@ export default function GunSonuPenceresi({ yazdir, kapat }: { yazdir: (b: GunSon
               <div className="flex justify-between gap-3"><span className="text-muted">İptal ({o.iptal.adet})</span><span className="tabular-nums">{tl(o.iptal.tutar)}</span></div>
               {o.iptal.liste.length > 0 && <p className="mt-0.5 text-xs text-muted">{o.iptal.liste.map((x) => `No ${x.no}${x.kisi ? ` (${x.kisi})` : ''}`).join(', ')}</p>}
             </li>
+            {o.indirim && o.indirim.adet > 0 && (
+              <li className="py-2">
+                <div className="flex justify-between gap-3"><span className="text-muted">İndirim ve ikram ({o.indirim.adet})</span><span className="tabular-nums">{tl(o.indirim.tutar)}</span></div>
+                <p className="mt-0.5 text-xs text-muted">{o.indirim.liste.map((x) => `No ${x.no} ${INDIRIM_ADI[x.tur].toLocaleLowerCase('tr')}${x.kisi ? ` (${x.kisi})` : ''}`).join(', ')}</p>
+              </li>
+            )}
             {o.personel.map((p) => (
               <li key={p.ad} className="flex justify-between gap-3 py-2"><span className="min-w-0 truncate text-muted">{p.ad} · {p.siparis} sipariş</span><span className="flex-none tabular-nums">{tl(p.ciro)}</span></li>
             ))}

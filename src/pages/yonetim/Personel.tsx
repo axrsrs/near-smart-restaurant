@@ -55,6 +55,7 @@ export default function Personel() {
                   {p.yetkiler.map((y) => (
                     <span key={y} className="rounded-full bg-soft px-2 py-0.5 text-gold">{YETKI_ADI[y]}</span>
                   ))}
+                  {p.indirim && <span className="rounded-full border border-line px-2 py-0.5 text-muted">İndirim yetkisi</span>}
                   {!p.aktif && <span className="rounded-full border border-warn/50 px-2 py-0.5 text-warn">Giriş kapalı</span>}
                 </p>
               </div>
@@ -96,6 +97,7 @@ function PersonelFormu({ isletme, kisi, kapat, kaydedildi }: { isletme: string; 
   const [yetkiler, setYetkiler] = useState<Yetki[]>(kisi?.yetkiler ?? ['kasa'])
   const [pin, setPin] = useState('')
   const [aktif, setAktif] = useState(kisi?.aktif ?? true)
+  const [indirim, setIndirim] = useState(kisi?.indirim ?? false)
   const [hata, setHata] = useState('')
   const [bekle, setBekle] = useState(false)
 
@@ -106,7 +108,7 @@ function PersonelFormu({ isletme, kisi, kapat, kaydedildi }: { isletme: string; 
     if (!yetkiler.length) return setHata('En az bir ekran seçin.')
     if (!kisi && !/^\d{4}$/.test(pin)) return setHata('PIN 4 haneli bir sayı olmalı.')
     setBekle(true)
-    const s = await personelKaydet(isletme, { id: kisi?.id, ad, yetkiler, pin, aktif })
+    const s = await personelKaydet(isletme, { id: kisi?.id, ad, yetkiler, pin, aktif, indirim })
     setBekle(false)
     if (s.tamam) kaydedildi()
     else setHata(s.hata)
@@ -159,6 +161,13 @@ function PersonelFormu({ isletme, kisi, kapat, kaydedildi }: { isletme: string; 
             <span className="text-muted">Kapalıyken PIN kabul edilmez.</span>
           </span>
           <Anahtar acik={aktif} degistir={setAktif} etiket="Giriş açık" />
+        </div>
+        <div className="flex items-center gap-3 rounded-[10px] border border-line px-3.5 py-1">
+          <span className="min-w-0 flex-1 text-sm">
+            <b className="block font-semibold">İndirim ve ikram yapabilir</b>
+            <span className="text-muted">Kasada indirim, ikram ve personel yemeği uygular. Her işlem adıyla kaydedilir.</span>
+          </span>
+          <Anahtar acik={indirim} degistir={setIndirim} etiket="İndirim ve ikram yapabilir" />
         </div>
         <p role="alert" aria-live="polite" className="min-h-5 text-[13px] text-danger">{hata}</p>
         <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">

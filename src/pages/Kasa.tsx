@@ -5,6 +5,7 @@ import Fis from '../components/Fis'
 import GunSonuFis from '../components/GunSonuFis'
 import GunSonuPenceresi, { type GunSonuBaski } from '../components/GunSonuPenceresi'
 import Ikon from '../components/Ikon'
+import IndirimPaneli from '../components/IndirimPaneli'
 import MaliFis from '../components/MaliFis'
 import MutfakFis from '../components/MutfakFis'
 import Pencere from '../components/Pencere'
@@ -15,9 +16,11 @@ import { oku, yaz } from '../lib/depo'
 import { cihazGorunumuAyarla, isletmeGorunumu, KASA_GORUNUMLERI, kasaGorunumAdi, useCihazGorunumu, type KasaGorunum } from '../lib/kasaGorunum'
 import { ODEME_ADI, takipAdresi, TUR_ADI } from '../lib/etiketler'
 import { menuYukle, useMenu, type MenuUrun } from '../lib/menu'
-import { kilitle, type Isletme } from '../lib/oturum'
+import { kilitle, type Isletme, type Personel } from '../lib/oturum'
 import { tl } from '../lib/para'
 import {
+  INDIRIM_ADI,
+  indirimTutari,
   maliIsaretle,
   otomatikFisAyarla,
   siparisGunu,
@@ -27,6 +30,7 @@ import {
   tukendiAyarla,
   useOtomatikFis,
   useSiparisler,
+  type IndirimIstegi,
   type Odeme,
   type Siparis,
   type SiparisTuru,
@@ -47,7 +51,7 @@ const IZGARA: Record<KasaGorunum, string> = {
 }
 const saat = (z: number) => new Date(z).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
 
-export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; personel: { id: string; ad: string }; kanal: string }) {
+export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; personel: Personel; kanal: string }) {
   const { slug, ad: isletmeAd, logo } = isletme
   const { menu, yukleniyor, hata: menuHata } = useMenu(slug)
   const siparisler = useSiparisler()
@@ -66,6 +70,8 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
   const [basilacakGun, setBasilacakGun] = useState<{ baski: GunSonuBaski; sira: number } | null>(null)
   const [uyari, setUyari] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [indirim, setIndirim] = useState<IndirimIstegi | null>(null) // ödeme penceresinde seçilen indirim / ikram
+  const [indirimAcik, setIndirimAcik] = useState(false)
   const tamamlaniyor = useRef(false)
 
   /* bugünün siparişleri ve menü: mutfak "hazır" dediğinde ya da menü değiştiğinde anında, ayrıca düzenli aralıkla tazelenir */
@@ -122,6 +128,8 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
   const bugunku = useMemo(() => [...siparisler].sort((x, y) => y.zaman - x.zaman), [siparisler])
 
   const toplam = satirlar.reduce((t, s) => t + s.fiyat * s.adet, 0)
+  const indirimTl = indirim ? (indirimTutari(toplam, indirim) ?? 0) : 0
+  const odenecek = toplam - indirimTl
   const urunAdedi = satirlar.reduce((t, s) => t + s.adet, 0)
   const aktifKategori = kategori === 'tum' || menu?.kategoriler.some((k) => k.id === kategori) ? kategori : 'tum'
 
@@ -158,7 +166,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
     if (tamamlaniyor.current || !satirlar.length) return
     tamamlaniyor.current = true
     setKaydediliyor(true)
-    const s = await siparisOlustur({ kalemler: satirlar.map(({ urunId, adet, not }) => ({ urunId, adet, not })), tur, odeme, istek })
+    const s = await siparisOlustur({ kalemler: satirlar.map(({ urunId, adet, not }) => ({ urunId, adet, not })), tur, odeme, istek, indirim })
     tamamlaniyor.current = false
     setKaydediliyor(false)
     if (!s.tamam || !s.siparis) {
@@ -169,6 +177,8 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
     setUyari('')
     setSepet([])
     setTur('burada')
+    setIndirim(null)
+    setIndirimAcik(false)
     setAcik({ t: 'tamam', siparis: s.siparis })
     if (otomatikFis) yazdir(s.siparis, kasadaMutfakFisi)
   }
@@ -184,7 +194,7 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
       adetDegistir={adetDegistir}
       notAc={(a) => setAcik({ t: 'not', anahtar: a })}
       bosalt={() => setSepet([])}
-      tamamla={() => { setUyari(''); setAcik({ t: 'odeme', istek: istekKimligi() }) }}
+      tamamla={() => { setUyari(''); setIndirim(null); setIndirimAcik(false); setAcik({ t: 'odeme', istek: istekKimligi() }) }}
     />
   )
   // sipariş alındı penceresi: mali fiş işareti değişince güncel kayıt gösterilir
@@ -362,11 +372,36 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
       {acik?.t === 'odeme' && (
         <Pencere baslik="Ödeme" kapat={() => !kaydediliyor && setAcik(null)}>
           <p className="text-center text-sm text-muted">{urunAdedi} ürün · {TUR_ADI[tur]}</p>
-          <p className="mt-1 mb-5 text-center text-4xl font-semibold tracking-tight tabular-nums">{tl(toplam)}</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button type="button" data-ilk disabled={kaydediliyor || !satirlar.length} onClick={() => void tamamla('nakit', acik.istek)} className={`${BTN_ANA} h-20 text-lg`}>Nakit</button>
-            <button type="button" disabled={kaydediliyor || !satirlar.length} onClick={() => void tamamla('kart', acik.istek)} className={`${BTN_ANA} h-20 text-lg`}>Kart</button>
-          </div>
+          {indirim ? (
+            <>
+              <p className="mt-1 text-center text-sm text-muted tabular-nums line-through">{tl(toplam)}</p>
+              <p className="text-center text-4xl font-semibold tracking-tight tabular-nums">{tl(odenecek)}</p>
+              <p className="mt-1 mb-4 text-center text-[13px] font-semibold text-gold tabular-nums">
+                {INDIRIM_ADI[indirim.tur]}{indirim.tur === 'yuzde' || (indirim.tur === 'personel' && (indirim.deger ?? 100) < 100) ? ` %${indirim.deger ?? 100}` : ''} · −{tl(indirimTl)}{indirim.aciklama.trim() ? ` · ${indirim.aciklama.trim()}` : ''}
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 mb-4 text-center text-4xl font-semibold tracking-tight tabular-nums">{tl(toplam)}</p>
+          )}
+          {personel.indirim && !indirimAcik && (
+            <button type="button" disabled={kaydediliyor} onClick={() => setIndirimAcik(true)} className="mx-auto mb-4 flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-gold underline underline-offset-4">
+              <Ikon ad="etiket" className="size-4" />
+              {indirim ? 'İndirimi değiştir' : 'İndirim / ikram'}
+            </button>
+          )}
+          {indirimAcik && (
+            <div className="mb-4">
+              <IndirimPaneli brut={toplam} mevcut={indirim} uygula={setIndirim} kapat={() => setIndirimAcik(false)} />
+            </div>
+          )}
+          {odenecek === 0 && indirim ? (
+            <button type="button" data-ilk disabled={kaydediliyor || !satirlar.length || indirimAcik} onClick={() => void tamamla('nakit', acik.istek)} className={`${BTN_ANA} h-16 w-full text-lg`}>Tamamla (ödeme yok)</button>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" data-ilk disabled={kaydediliyor || !satirlar.length || indirimAcik} onClick={() => void tamamla('nakit', acik.istek)} className={`${BTN_ANA} h-20 text-lg`}>Nakit</button>
+              <button type="button" disabled={kaydediliyor || !satirlar.length || indirimAcik} onClick={() => void tamamla('kart', acik.istek)} className={`${BTN_ANA} h-20 text-lg`}>Kart</button>
+            </div>
+          )}
           <p role="alert" aria-live="polite" className="mt-3 min-h-5 text-center text-[13px] text-danger">{kaydediliyor ? '' : uyari}</p>
           <p className="text-center text-xs text-muted">{kaydediliyor ? 'Sipariş kaydediliyor…' : 'Ödeme türü yalnızca kayıt içindir; ödeme cihazına bağlanmaz.'}</p>
         </Pencere>
@@ -375,7 +410,9 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
         <Pencere baslik="Sipariş alındı" kapat={() => setAcik(null)}>
           <p className="text-center text-xs font-semibold tracking-[0.2em] text-muted uppercase">Sipariş no</p>
           <p className="text-center text-8xl leading-none font-bold tracking-tight tabular-nums">{acik.siparis.no}</p>
-          <p className="mt-2 text-center text-sm text-muted">{TUR_ADI[acik.siparis.tur]} · {ODEME_ADI[acik.siparis.odeme]} · {tl(acik.siparis.toplam)}</p>
+          <p className="mt-2 text-center text-sm text-muted">
+            {TUR_ADI[acik.siparis.tur]} · {acik.siparis.toplam === 0 && acik.siparis.indirim ? INDIRIM_ADI[acik.siparis.indirim.tur] : ODEME_ADI[acik.siparis.odeme]} · {tl(acik.siparis.toplam)}
+          </p>
           <div className="mx-auto mt-4 w-44 rounded-2xl bg-white p-2">
             <QrKod metin={takipAdresi(acik.siparis.kod)} className="block size-full" />
           </div>
@@ -577,6 +614,7 @@ function SiparislerPenceresi({ liste, yazdir, gunSonu, kapat }: { liste: Siparis
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-semibold tabular-nums">
                   {tl(s.toplam)}
+                  {s.indirim && <span className="ml-2 rounded-full bg-soft px-2 py-0.5 text-xs font-semibold text-gold">{INDIRIM_ADI[s.indirim.tur]}</span>}
                   {dunden(s) && <span className="ml-2 rounded-full bg-warn/15 px-2 py-0.5 text-xs font-semibold text-warn">Dünden</span>}
                   {s.durum === 'iptal' && <span className="ml-2 rounded-full border border-danger/50 px-2 py-0.5 text-xs text-danger">İptal</span>}
                   {s.durum === 'hazir' && <span className="ml-2 rounded-full bg-ok/15 px-2 py-0.5 text-xs text-ok">Hazır</span>}

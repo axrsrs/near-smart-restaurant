@@ -16,6 +16,8 @@ export const EKRAN_ADI: Record<Ekran, string> = { kasa: 'Kasa', mutfak: 'Mutfak'
 export const PIN_ISTEYEN: Ekran[] = ['kasa', 'mutfak']
 
 // mali: mali fiş takibi açık mı; kasa_gorunum: işletmenin varsayılan kasa ürün görünümü (ikisi de cihaz durumundan gelir)
+/** Oturumdaki personel. indirim: indirim ve ikram yapabilir mi. */
+export type Personel = { id: string; ad: string; indirim?: boolean }
 export type Isletme = { id: string; slug: string; ad: string; logo: string; mali?: boolean; kasa_gorunum?: 'buyuk' | 'kucuk' | 'liste'; mutfak_fisi?: 'kapali' | 'kasa' | 'mutfak' }
 export type IsletmeKaydi = Isletme & { rol: string; tetra: boolean; abonelik: boolean; gorunum: Gorunum | null }
 export type Yonetici =
@@ -25,7 +27,7 @@ export type Yonetici =
 export type Cihaz =
   | { durum: 'yok' }
   | { durum: 'yukleniyor'; ekran: CihazEkrani; ad: string; isletme: Isletme }
-  | { durum: 'hazir'; id: string; ekran: CihazEkrani; ad: string; isletme: Isletme; kanal: string; personel: { id: string; ad: string } | null; personelTanimli: boolean }
+  | { durum: 'hazir'; id: string; ekran: CihazEkrani; ad: string; isletme: Isletme; kanal: string; personel: Personel | null; personelTanimli: boolean }
   | { durum: 'hata'; ekran: CihazEkrani; ad: string; isletme: Isletme; hata: string; kapali: boolean }
 
 type CihazKaydi = { anahtar: string; ekran: CihazEkrani; ad: string; isletme: Isletme }
@@ -34,7 +36,7 @@ type CihazYaniti = {
   isletme: Isletme
   kanal: string
   gorunum: unknown
-  personel: { id: string; ad: string } | null
+  personel: Personel | null
   personel_tanimli: boolean
 }
 
@@ -262,8 +264,10 @@ export async function pinDogrula(pin: string): Promise<Sonuc> {
     if (!y.tamam || !y.oturum || !y.personel) return { tamam: false, hata: y.hata ?? 'PIN doğrulanamadı.' }
     personelOturum = y.oturum
     yaz('session', A_OTURUM, y.oturum)
-    if (cihaz.durum === 'hazir') ayarlaCihaz({ ...cihaz, personel: y.personel })
-    else await cihazYenile()
+    if (cihaz.durum === 'hazir') {
+      ayarlaCihaz({ ...cihaz, personel: y.personel })
+      void cihazYenile() // personelin yetkileri (indirim) cihaz durumundan gelir
+    } else await cihazYenile()
     return { tamam: true }
   } catch (e) {
     return { tamam: false, hata: hataMetni(e) }
