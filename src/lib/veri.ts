@@ -86,6 +86,9 @@ export const cihazSil = (isletme: string, id: string) => dene(() => cagir<Yanit>
 
 /* ───────── kasa: siparişler (cihaz anahtarı + personel oturumuyla) ───────── */
 let siparisler: Siparis[] = []
+let gun = '' // sunucunun "bugün"ü (İstanbul saati); önceki günden kalan siparişleri ayırt etmek için
+/** Sunucunun bugün saydığı tarih (YYYY-AA-GG); henüz okunmadıysa boş. */
+export const siparisGunu = () => gun
 const dinleyenler = new Set<() => void>()
 const ayarla = (l: Siparis[]) => {
   siparisler = l
@@ -95,8 +98,9 @@ const ayarla = (l: Siparis[]) => {
 /** Bugünün siparişlerini sunucudan okur. */
 export async function siparisleriYukle(): Promise<Sonuc & { liste?: Siparis[] }> {
   try {
-    const y = await cihazCagir<{ siparisler: HamSiparis[] }>('tetra_siparisler')
+    const y = await cihazCagir<{ gun?: string; siparisler: HamSiparis[] }>('tetra_siparisler')
     const liste = y.siparisler.map(cevir)
+    gun = y.gun ?? gun
     ayarla(liste)
     return { tamam: true, liste }
   } catch (e) {

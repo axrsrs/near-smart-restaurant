@@ -9,7 +9,7 @@ import { oku, yaz } from '../lib/depo'
 import { TUR_ADI } from '../lib/etiketler'
 import { kilitle, type Isletme } from '../lib/oturum'
 import { cal, sesHazirla, sesiDene, useSesAcik } from '../lib/ses'
-import { siparisDurumu, siparisleriYukle, useSiparisler, type Siparis, type SiparisDurumu } from '../lib/veri'
+import { siparisDurumu, siparisGunu, siparisleriYukle, useSiparisler, type Siparis, type SiparisDurumu } from '../lib/veri'
 
 const dakika = (z: number, simdi: number) => Math.max(0, Math.floor((simdi - z) / 60_000))
 
@@ -164,6 +164,7 @@ export default function Mutfak({ isletme, personel, kanal }: { isletme: Isletme;
                     <div className="flex items-center gap-2.5">
                       <span className="text-5xl leading-none font-bold tracking-tight tabular-nums">{s.no}</span>
                       {s.tur === 'paket' && <span className="rounded-lg bg-text px-2.5 py-1 text-sm font-bold tracking-wide text-ink">PAKET</span>}
+                      {siparisGunu() && s.gun && s.gun !== siparisGunu() && <span className="rounded-lg bg-warn/15 px-2 py-1 text-xs font-semibold text-warn">Dünden</span>}
                       <span className={`ml-auto text-sm font-semibold tabular-nums ${dk >= 15 ? 'text-danger' : dk >= 8 ? 'text-warn' : 'text-muted'}`}>{dk} dk</span>
                       {isletme.mutfak_fisi !== 'kapali' && isletme.mutfak_fisi !== undefined && (
                         <button type="button" onClick={() => yazdir([s])} aria-label={`${s.no} numaralı siparişin mutfak fişini yazdır`} title="Mutfak fişi yazdır" className={`${IKON_BTN} -my-1`}>

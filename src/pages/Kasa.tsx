@@ -20,6 +20,7 @@ import { tl } from '../lib/para'
 import {
   maliIsaretle,
   otomatikFisAyarla,
+  siparisGunu,
   siparisDurumu,
   siparisleriYukle,
   siparisOlustur,
@@ -117,7 +118,8 @@ export default function Kasa({ isletme, personel, kanal }: { isletme: Isletme; p
       .map((k) => ({ ...k, urunler: a ? k.urunler.filter((u) => kucuk(u.ad).includes(a)) : k.urunler }))
       .filter((k) => k.urunler.length)
   }, [menu, kategori, arama])
-  const bugunku = useMemo(() => [...siparisler].sort((x, y) => y.no - x.no), [siparisler]) // sunucu yalnızca bugünün siparişlerini döner
+  // sunucu bugünün siparişlerini ve önceki günden kalan açık siparişleri döner; en yeni üstte
+  const bugunku = useMemo(() => [...siparisler].sort((x, y) => y.zaman - x.zaman), [siparisler])
 
   const toplam = satirlar.reduce((t, s) => t + s.fiyat * s.adet, 0)
   const urunAdedi = satirlar.reduce((t, s) => t + s.adet, 0)
@@ -544,7 +546,9 @@ function NotPenceresi({ satir, kaydet, kapat }: { satir: Satir; kaydet: (not: st
 function SiparislerPenceresi({ liste, yazdir, gunSonu, kapat }: { liste: Siparis[]; yazdir: (s: Siparis) => void; gunSonu: () => void; kapat: () => void }) {
   const [iptalSor, setIptalSor] = useState<string | null>(null)
   const [hata, setHata] = useState('')
-  const gecerli = liste.filter((s) => s.durum !== 'iptal')
+  const gun = siparisGunu()
+  const dunden = (s: Siparis) => Boolean(gun && s.gun && s.gun !== gun)
+  const gecerli = liste.filter((s) => s.durum !== 'iptal' && !dunden(s)) // özet yalnızca bugünün siparişleri
   const bekleyen = gecerli.filter((s) => s.mali?.durum === 'bekliyor').length
   const tutar = (o: Odeme) => gecerli.filter((s) => s.odeme === o).reduce((t, s) => t + s.toplam, 0)
 
@@ -573,6 +577,7 @@ function SiparislerPenceresi({ liste, yazdir, gunSonu, kapat }: { liste: Siparis
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-semibold tabular-nums">
                   {tl(s.toplam)}
+                  {dunden(s) && <span className="ml-2 rounded-full bg-warn/15 px-2 py-0.5 text-xs font-semibold text-warn">Dünden</span>}
                   {s.durum === 'iptal' && <span className="ml-2 rounded-full border border-danger/50 px-2 py-0.5 text-xs text-danger">İptal</span>}
                   {s.durum === 'hazir' && <span className="ml-2 rounded-full bg-ok/15 px-2 py-0.5 text-xs text-ok">Hazır</span>}
                   {s.durum === 'teslim' && <span className="ml-2 rounded-full border border-line px-2 py-0.5 text-xs text-muted">Teslim edildi</span>}
