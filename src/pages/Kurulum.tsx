@@ -100,33 +100,33 @@ const CizimBildirim = () => (
 
 const ADIMLAR: { baslik: string; metin: string; ipucu: string; cizim: ReactNode }[] = [
   {
-    baslik: 'Giriş yapın',
-    metin: 'tetra.neardiji.com adresini açın ve NearMenu panelinde kullandığınız e-posta ile şifreyi yazın. Yeni bir hesap açmanıza gerek yok; menünüz, ürünleriniz ve fiyatlarınız sizi bekliyor.',
-    ipucu: 'İlk kez giriyorsanız önce NearMenu panelinde geçici şifrenizi değiştirin.',
+    baslik: 'Giriş yap',
+    metin: 'NearMenu panelindeki e-posta ve şifrenle giriş yap. Yeni hesap açmana gerek yok; menün, ürünlerin ve fiyatların hazır.',
+    ipucu: 'İlk kez giriyorsan önce NearMenu panelinde geçici şifreni değiştir.',
     cizim: <CizimGiris />,
   },
   {
-    baslik: 'Ekibinizi ekleyin',
-    metin: 'Yönetim › Personel bölümünde kasada ve mutfakta çalışan herkesi ekleyin. Her kişiye yalnızca kendisinin bildiği 4 haneli bir PIN verin; hangi siparişi kimin aldığı böylece hep belli olur.',
-    ipucu: 'Bir personel ayrılırsa silmek yerine girişini kapatabilirsiniz.',
+    baslik: 'Ekibini ekle',
+    metin: 'Yönetim › Personel’de kasada ve mutfakta çalışan herkesi ekle. Her kişiye kendine ait 4 haneli bir PIN ver; hangi siparişi kimin aldığı hep belli olur.',
+    ipucu: 'Bir personel ayrılırsa silmek yerine girişini kapatabilirsin.',
     cizim: <CizimPersonel />,
   },
   {
-    baslik: 'Cihazlarınızı yerleştirin',
-    metin: 'Kasa olacak tablette giriş yapın ve “Kasa”yı seçin. Aynısını mutfak tableti ve müşterilerin göreceği TV için tekrarlayın. Her cihaz bir kez tanıtılır; sonraki açılışlarda doğrudan kendi ekranı gelir.',
-    ipucu: 'TV’de tam ekran düğmesine ve sesli uyarı için ekrana bir kez dokunun.',
+    baslik: 'Cihazlarını yerleştir',
+    metin: 'Kasa tabletinde giriş yap, “Kasa”yı seç. Mutfak tableti ve müşterinin göreceği TV için de aynısını yap. Her cihaz bir kez tanıtılır; sonra doğrudan kendi ekranıyla açılır.',
+    ipucu: 'TV’de tam ekran düğmesine ve sesli uyarı için ekrana bir kez dokun.',
     cizim: <CizimCihaz />,
   },
   {
-    baslik: 'İlk siparişinizi alın',
-    metin: 'Kasada ürünlere dokunun, notunu ekleyin, “Burada” ya da “Paket”i seçip ödemeyi işaretleyin. Sipariş aynı anda mutfağa düşer; mutfak “Hazır” dediğinde numara TV’de belirir.',
-    ipucu: 'Biten ürünü kasadan “tükendi” yapın; QR menünüzde de anında görünür.',
+    baslik: 'İlk siparişini al',
+    metin: 'Ürünlere dokun, notu ekle, “Burada” ya da “Paket”i seç, ödemeyi işaretle. Sipariş aynı anda mutfağa düşer; mutfak “Hazır” deyince numara TV’de belirir.',
+    ipucu: 'Biten ürünü kasadan “tükendi” yap; QR menünde de anında görünür.',
     cizim: <CizimSiparis />,
   },
   {
-    baslik: 'Müşteriniz beklerken rahat etsin',
-    metin: 'Fişteki QR kodu okutan müşteri siparişini kendi telefonundan izler. “Hazır olunca haber ver”e basarsa, sırası geldiğinde telefonuna bildirim gider. Kimse tezgâhın önünde beklemek zorunda kalmaz.',
-    ipucu: 'Fiş yazıcınız yoksa QR kodu sipariş sonrası kasa ekranında da görünür.',
+    baslik: 'Müşterin beklerken rahat etsin',
+    metin: 'Fişteki QR’ı okutan müşteri siparişini kendi telefonundan izler. “Hazır olunca haber ver”e basarsa sırası gelince telefonuna bildirim gider. Kimse tezgâhın önünde beklemez.',
+    ipucu: 'Fiş yazıcın yoksa QR, siparişten sonra kasa ekranında da görünür.',
     cizim: <CizimBildirim />,
   },
 ]
@@ -166,15 +166,26 @@ export default function Kurulum() {
           <img src={logo} alt="NEAR Agency" width={560} height={146} className="near-logo kur-giris mt-8 h-9 w-auto sm:mt-14" />
           <p className="kur-giris mt-5 text-[11px] font-semibold tracking-[0.3em] text-gold uppercase" style={{ animationDelay: '0.12s' }}>Tetra</p>
           <h1 className="kur-giris mt-4 text-4xl leading-[1.08] font-semibold tracking-tight text-balance sm:text-6xl" style={{ animationDelay: '0.24s' }}>
-            Siparişleriniz artık kendi akışında.
+            Siparişlerin artık kendi akışında.
           </h1>
           <p className="kur-giris mt-5 max-w-xl text-base text-muted text-pretty sm:text-lg" style={{ animationDelay: '0.36s' }}>
-            Tetra’ya hoş geldiniz. Kasanız, mutfağınız ve müşterinizin telefonu aynı anda aynı şeyi görür. Kurulum beş adım ve yaklaşık on dakika sürer.
+            Kasa, mutfak ve müşterinin telefonu aynı anda aynı şeyi görür. NearMenu hesabın varsa kurulum beş adım, yaklaşık on dakika.
           </p>
           <Link to="/giris" className="kur-giris group mt-8 inline-flex h-14 items-center gap-2 rounded-[12px] bg-text px-7 text-base font-semibold text-ink transition hover:scale-[1.03] active:scale-[0.98]" style={{ animationDelay: '0.48s' }}>
-            Tetra’yı aç
+            Giriş yap
             <Ikon ad="ok" className="size-4 transition-transform group-hover:translate-x-1" />
           </Link>
+          <p className="kur-giris mt-4 text-sm text-muted" style={{ animationDelay: '0.6s' }}>
+            NearMenu hesabın yok mu?{' '}
+            <a
+              href={whatsapp ? waAdres : 'https://neardiji.com/#iletisim'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-text underline decoration-line underline-offset-4 transition hover:decoration-text"
+            >
+              Tetra için yaz
+            </a>
+          </p>
         </div>
       </header>
 
@@ -204,17 +215,17 @@ export default function Kurulum() {
         <Belir className="mt-10 rounded-3xl bg-text p-7 text-center text-ink sm:p-10">
           <h2 className="text-3xl font-semibold tracking-tight text-balance">Hepsi bu kadar.</h2>
           <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed opacity-75 text-pretty">
-            İlk siparişinizi aldığınızda geri kalanı kendiliğinden yerine oturur. Takıldığınız bir yer olursa bize yazmanız yeterli; birlikte çözeriz.
+            İlk siparişle geri kalan kendiliğinden yerine oturur. Takıldığın bir yer olursa yazman yeterli.
           </p>
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link to="/giris" className="group inline-flex h-14 w-full items-center justify-center gap-2 rounded-[12px] bg-ink px-7 text-base font-semibold text-text transition hover:scale-[1.03] active:scale-[0.98] sm:w-auto">
-              Kuruluma başla
+              Giriş yap
               <Ikon ad="ok" className="size-4 transition-transform group-hover:translate-x-1" />
             </Link>
             {whatsapp && (
               <a href={waAdres} target="_blank" rel="noopener noreferrer" className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-[12px] border border-ink/30 px-7 text-base font-semibold text-ink transition hover:scale-[1.03] active:scale-[0.98] sm:w-auto">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="size-5"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 1.8a8.2 8.2 0 1 1-4.2 15.3l-.3-.2-2.9.8.8-2.8-.2-.3A8.2 8.2 0 0 1 12 3.8Zm-3.3 4.1c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3 2.4 1 2.9.8 3.4.7.5 0 1.7-.7 1.9-1.3.2-.7.2-1.2.2-1.3l-.6-.4-1.9-.9c-.3-.1-.5-.1-.7.2l-.9 1.1c-.2.2-.3.2-.6.1a7 7 0 0 1-2-1.3 7.6 7.6 0 0 1-1.4-1.8c-.2-.3 0-.4.1-.6l.4-.5.3-.5v-.5l-.9-2.1c-.2-.5-.4-.4-.6-.4h-.4Z" /></svg>
-                WhatsApp'tan yazın
+                WhatsApp’tan yaz
               </a>
             )}
           </div>
