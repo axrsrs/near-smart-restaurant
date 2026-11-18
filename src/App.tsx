@@ -99,10 +99,7 @@ export default function App() {
           element={
             <Bulunamadi
               aciklama={<>Aradığın sayfa taşınmış ya da<br />hiç var olmamış olabilir.</>}
-              dugmeler={[
-                { ikon: 'ev', etiket: 'Girişe dön', adres: '/' },
-                { ikon: 'pusula', etiket: 'Kurulum nasıl?', adres: '/kurulum' },
-              ]}
+              dugmeler={[{ ikon: 'pusula', etiket: 'Kuruluma git', adres: '/kurulum' }]}
             />
           }
         />
