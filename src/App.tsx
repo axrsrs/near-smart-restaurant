@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { BTN_ANA, BTN_IKINCIL } from './components/bicim'
 import { cihazYenile, EKRAN_ADI, PIN_ISTEYEN, useCihaz, useYonetici, type CihazEkrani, type Isletme } from './lib/oturum'
+import Bulunamadi from './components/Bulunamadi'
 import EkranSecimi from './pages/EkranSecimi'
 import Giris from './pages/Giris'
 import Kasa from './pages/Kasa'
@@ -93,7 +94,18 @@ export default function App() {
         <Route path="/tv" element={<CihazSart ekran="tv">{(b) => <Tv isletme={b.isletme} kanal={b.kanal} />}</CihazSart>} />
         <Route path="/t/:kod" element={<Takip />} />
         <Route path="/kurulum" element={<Kurulum />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route
+          path="*"
+          element={
+            <Bulunamadi
+              aciklama={<>Aradığın sayfa taşınmış ya da<br />hiç var olmamış olabilir.</>}
+              dugmeler={[
+                { ikon: 'ev', etiket: 'Girişe dön', adres: '/' },
+                { ikon: 'pusula', etiket: 'Kurulum nasıl?', adres: '/kurulum' },
+              ]}
+            />
+          }
+        />
       </Routes>
     </Yonlendirici>
   )

@@ -43,6 +43,7 @@ const BASLIK = {
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "Strict-Transport-Security": "max-age=31536000"
 };
+const TANINAN = /^\\/(giris|ekran|kasa|mutfak|tv|kurulum|yonetim(\\/(personel|cihazlar|menu|raporlar|isletme))?|t\\/[^/]+)?\\/?$/;
 const onbellek = new Map();
 function govde(yol) {
   let b = onbellek.get(yol);
@@ -70,10 +71,12 @@ export default {
       if (yol.startsWith("/assets/") || son.startsWith(".") || son.includes(".") || yol.includes("/.")) return new Response("Bulunamadı", { status: 404, headers: BASLIK });
       yol = "/index.html";
     }
+    /* uygulamanın tanıdığı adresler (src/App.tsx ile aynı tutulmalı); geri kalanı 404 ekranı + 404 durum kodu */
+    const durum = yol === "/index.html" && !TANINAN.test(new URL(istek.url).pathname) ? 404 : 200;
     const h = new Headers(BASLIK);
     h.set("Content-Type", DOSYA[yol][0]);
     h.set("Cache-Control", yol.startsWith("/assets/") ? "public, max-age=31536000, immutable" : yol.startsWith("/sesler/") ? "public, max-age=2592000" : "no-cache");
-    return new Response(istek.method === "HEAD" ? null : govde(yol), { headers: h });
+    return new Response(istek.method === "HEAD" ? null : govde(yol), { status: durum, headers: h });
   }
 };
 `

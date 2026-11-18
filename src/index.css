@@ -216,3 +216,13 @@
   .kur-giris, .kur-nokta, .kur-nabiz, .kur-kay, .kur-yuksel, .kur-sol, .kur-sag, .kur-dus, .kur-zil { animation: none; }
   .kur-sol { opacity: 0.35; }
 }
+
+/* ── 404 ekranı (Bulunamadi) ── */
+.bulunamadi-404 {
+  -webkit-mask-image: linear-gradient(to bottom, #000 20%, transparent 80%);
+  mask-image: linear-gradient(to bottom, #000 20%, transparent 80%);
+}
+.bulunamadi-gir { animation: bulunamadi-gir 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes bulunamadi-gir { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+:root[data-theme="dark"] .dark-cizgi { opacity: 0.42; }
+@media (prefers-reduced-motion: reduce) { .bulunamadi-gir { animation: none; } }

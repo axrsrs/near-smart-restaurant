@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import Bulunamadi from '../components/Bulunamadi'
 import Ikon from '../components/Ikon'
 import TemaDugmesi from '../components/TemaDugmesi'
 import { bildirimAc, bildirimDestegi } from '../lib/bildirim'
@@ -76,6 +77,14 @@ export default function Takip() {
 
   const sira = veri ? ADIMLAR.findIndex((a) => a.durum === veri.durum) : -1
   const hazir = veri?.durum === 'hazir'
+
+  if (veri === null)
+    return (
+      <Bulunamadi
+        aciklama={<>Sipariş bulunamadı. Takip adresi geçersiz<br />ya da siparişin üzerinden bir günden fazla geçmiş.</>}
+        dugmeler={[{ ikon: 'yenile', etiket: 'Yeniden dene', tikla: () => location.reload() }]}
+      />
+    )
 
   return (
     <div className={`flex min-h-dvh flex-col items-center px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] transition-colors ${hazir ? 'bg-ok/15' : 'bg-ink'}`}>
