@@ -56,13 +56,21 @@ function CihazSart({ ekran, children }: { ekran: CihazEkrani; children: (b: { is
   return children({ isletme: c.isletme, kanal: c.kanal, personel: c.personel })
 }
 
-/** Açılış: tanıtılmış cihaz kendi ekranına, giriş yapmış yönetici ekran seçimine, diğerleri girişe gider. */
+/** Açılış (tetra.neardiji.com): tanıtılmış cihaz kendi ekranına, giriş yapmış yönetici ekran seçimine gider;
+    diğer herkes kurulum sayfasını görür (oradan "Tetra'yı aç" ile girişe geçilir). */
 function Acilis() {
   const c = useCihaz()
   const y = useYonetici()
   if (c.durum !== 'yok') return <Navigate to={`/${c.ekran}`} replace />
   if (y.durum === 'yukleniyor') return <Bekle />
-  return <Navigate to={y.durum === 'var' ? '/ekran' : '/giris'} replace />
+  return y.durum === 'var' ? <Navigate to="/ekran" replace /> : <Kurulum />
+}
+
+/** Eski /kurulum bağlantıları: ziyaretçi ana adrese yönlenir; giriş yapmış yönetici adımları burada görmeye devam eder. */
+function EskiKurulum() {
+  const y = useYonetici()
+  if (y.durum === 'yukleniyor') return <Bekle />
+  return y.durum === 'var' ? <Kurulum /> : <Navigate to="/" replace />
 }
 
 /* Tek dosyalık sürüm (npm run build:tek) adres çubuğu olmadan da çalışsın diye yolu bellekte tutar. */
@@ -93,13 +101,13 @@ export default function App() {
         <Route path="/mutfak" element={<CihazSart ekran="mutfak">{(b) => (b.personel ? <Mutfak isletme={b.isletme} personel={b.personel} kanal={b.kanal} /> : null)}</CihazSart>} />
         <Route path="/tv" element={<CihazSart ekran="tv">{(b) => <Tv isletme={b.isletme} kanal={b.kanal} />}</CihazSart>} />
         <Route path="/t/:kod" element={<Takip />} />
-        <Route path="/kurulum" element={<Kurulum />} />
+        <Route path="/kurulum" element={<EskiKurulum />} />
         <Route
           path="*"
           element={
             <Bulunamadi
               aciklama={<>Aradığın sayfa taşınmış ya da<br />hiç var olmamış olabilir.</>}
-              dugmeler={[{ ikon: 'pusula', etiket: 'Kuruluma git', adres: '/kurulum' }]}
+              dugmeler={[{ ikon: 'pusula', etiket: 'Kuruluma git', adres: '/' }]}
             />
           }
         />

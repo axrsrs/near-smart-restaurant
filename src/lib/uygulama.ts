@@ -1,6 +1,7 @@
 /* "Uygulama olarak yükle": hangi ekrandaysa o ekranın uygulaması yüklenir.
    /kasa → Tetra Kasa, /mutfak → Tetra Mutfak, /tv → Tetra TV, diğerleri → Tetra.
-   Müşterinin takip sayfası (/t/…) ve kurulum sayfası işletme uygulaması olarak önerilmez. */
+   Müşterinin takip sayfası (/t/…) ve /kurulum işletme uygulaması olarak önerilmez.
+   Ana adreste (/) kurulum sayfası görünse de genel Tetra uygulaması önerilir (açılışı /ekran). */
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
